@@ -46,4 +46,12 @@ jobs:
       - run: uvx semgrep --config p/python --config p/owasp-top-ten --error --quiet libs services simulator ml tools
       - run: uvx pip-audit --skip-editable || true   # advisory on push; blocking on PR (see pr.yml owned by the DevOps stream)
 
+  docs-fresh:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: python tools/docs_check.py --base origin/${{ github.base_ref }}   # living docs must move with the code
+
   # PR to main: heavier gates (Testcontainers integration, contracts, BDD, compliance, image scan, DAST) live in pr.yml (DevOps stream).
