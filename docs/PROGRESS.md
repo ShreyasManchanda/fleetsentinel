@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-28 23:35 IST** by the integrator.
+> Last updated: **2026-09-29 ~00:05 IST** by the integrator.
 
 ## Clock
 
@@ -32,7 +32,7 @@
 |---|---|---|---|---|
 | Phase 0 | contracts, migrations, mapping engine, infra config | integrator | DONE | 72 tests, 100% on vin/dtc/hashing/contracts, 91% mapping engine |
 | A | simulator + seed | agent (lost, see log) | PARTIAL | 33 py files, 59 tests pass; no final report (agent rate-limited). Needs verification vs §6/DoD |
-| B | ingestion + stream processing | agent (bg task, launched 23:05) + integrator fixes | PARTIAL | gateway (33) + normalizer (14) + algorithms/sketches/crypto/mapping_fast green (165 libs). **Processor + lake_sink being built now.** 3 test-side bugs fixed by integrator (B-016) |
+| B | ingestion + stream processing | agent (bg task, launched 23:05) + integrator fixes | PARTIAL | gateway (33) + normalizer (14) + algorithms/sketches/crypto/mapping_fast green (libs 150). **Processor + lake_sink implementation drafted by bg builder (untracked, no tests yet — not verified).** B-016 fixed; lint fully clean (B-018 FIXED) |
 | C | API + security | agent (lost, see log) | PARTIAL | 67 py files, 23 tests pass; no final report. RLS/BOLA gates need real-Postgres check (M1) |
 | D | intelligence (ML + copilot + batch) | unassigned | NOT STARTED | waits for stream A ground truth; launch next when A/B/C land (RAM) |
 | E | web | unassigned | NOT STARTED | can start on a mock of `openapi.yaml`; node available, held until a builder slot frees (RAM) |
@@ -55,7 +55,7 @@
 
 | Blocker / risk | Impact | Status | Next action |
 |---|---|---|---|
-| Local RAM: browser closed -> 71% committed, ~1.5 GB free (was 91% / 230 MB); `opencode` (~2 GB) + Traycer still resident | Docker stack + agents may still thrash | PARTIAL | Max 3 agents at a time; user cannot close opencode right now; heavy evidence on cloud VM |
+| Local RAM: browser closed -> 71% committed, ~1.5 GB free (was 91% / 230 MB); `opencode` (~2 GB) + Traycer still resident | Docker stack + agents may still thrash | WORSE AGAIN | 2026-09-29 ~00:05 IST: back to **92.8% committed, ~1 GB free**. Docker engine down again (pipe missing). No container work until memory frees; builders work with fakes/--local only |
 | `timescale/timescaledb-ha:pg17` (~2 GB) pull dies with `unexpected EOF` | Cannot test migrations locally | OPEN | Retry when memory is free; fallback = test on cloud VM |
 | Mapping engine ~11k rec/s/core | 100k/s needs ~9 cores of normalization | OPEN (assigned to stream B) | Batch-vectorised fast path, report measured rate |
 | Solution Document template not in the folder | Submission format risk | OPEN, needs user | User to supply; content is pre-structured in spec section 20 |

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import heapq
 import math
-from collections.abc import Callable, Hashable, Iterable
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass, field
 
 from .geo import haversine_km

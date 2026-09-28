@@ -17,6 +17,7 @@ from fscore.algorithms import (
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+
 # ---------------------------------------------------------------- PELT
 def test_pelt_finds_obvious_changepoints():
     y = [0.0] * 30 + [50.0] * 30 + [0.0] * 30
@@ -43,8 +44,12 @@ def test_pelt_is_faster_than_naive_on_long_series():
     y = []
     for level in (0, 40, 0, 60, 5, 0):
         y += [level + rng.gauss(0, 1) for _ in range(200)]
-    t0 = time.perf_counter(); cp, c1 = segment_pelt(y, 30.0); t_p = time.perf_counter() - t0
-    t0 = time.perf_counter(); cn, c2 = segment_naive(y, 30.0); t_n = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    cp, c1 = segment_pelt(y, 30.0)
+    t_p = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    cn, c2 = segment_naive(y, 30.0)
+    t_n = time.perf_counter() - t0
     assert cp == cn and c1 == pytest.approx(c2) and t_p < t_n
 
 
@@ -163,14 +168,17 @@ def test_idle_detector_segments_and_gaps():
     seg = i.update(S(160, 30.0))
     assert seg is not None and seg.seconds == 150 and seg.start_ts_ms == 0
     j = IdleDetector("V", min_idle_ms=60_000, max_gap_ms=300_000)
-    j.update(S(0, 0.0)); j.update(S(100, 0.0))
+    j.update(S(0, 0.0))
+    j.update(S(100, 0.0))
     seg2 = j.update(S(1000, 0.0))                       # huge gap closes the previous segment
     assert seg2 is not None and seg2.seconds == 100
     k = IdleDetector("V")
-    k.update(S(0, 0.0)); k.update(S(30, 0.0))
+    k.update(S(0, 0.0))
+    k.update(S(30, 0.0))
     assert k.update(S(40, 0.0, ign=False)) is None      # too short to report
     m = IdleDetector("V", min_idle_ms=1000)
-    m.update(S(0, 0.0)); m.update(S(50, 0.0))
+    m.update(S(0, 0.0))
+    m.update(S(50, 0.0))
     m2 = IdleDetector("V", min_idle_ms=1000)
     m2.restore_state(m.snapshot())
     assert m2.idle_ms == 50_000

@@ -1,8 +1,7 @@
 import pytest
+from fscore import crypto as c
 from hypothesis import given
 from hypothesis import strategies as st
-
-from fscore import crypto as c
 
 
 class FakeTransit:
@@ -186,7 +185,7 @@ def test_decrypt_or_erased_full_lifecycle():
     store = c.SubjectKeyStore(w)
     dek = c.generate_dek()
     wrapped = w.wrap(dek)
-    blob = c.encrypt(dek, "sk-9", "Ravi Kumar".encode(), b"driver.name")
+    blob = c.encrypt(dek, "sk-9", b"Ravi Kumar", b"driver.name")
     assert c.decrypt_or_erased(store, blob, wrapped, b"driver.name") == "Ravi Kumar"
     # erasure: the wrapped DEK is destroyed (NULL) -> the SAME ciphertext replays as [erased]
     assert c.decrypt_or_erased(store, blob, None, b"driver.name") == c.ERASED_MARKER == "[erased]"
