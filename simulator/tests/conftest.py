@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from fs_simulator.fleet import generate_fleet
 from fs_simulator.routes import build_library
 

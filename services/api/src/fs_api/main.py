@@ -11,8 +11,8 @@ import structlog
 from fastapi import FastAPI
 from fscore.crypto import LocalDevWrapper, SubjectKeyStore, VaultTransitWrapper
 
-from .adapters.http_clients import HttpAgentClient, fetch_jwks_keys
 from .adapters.duckdb_reports import DuckDbReportRunner
+from .adapters.http_clients import HttpAgentClient, fetch_jwks_keys
 from .adapters.kafka_pub import KafkaAuditPublisher, KafkaMappingPublisher, make_producer
 from .adapters.mongo_store import MongoDlq, MongoTwinStore, make_mongo
 from .adapters.pg import PgTenantDb, make_engine

@@ -37,6 +37,13 @@ ignore = ["S101", "E501"]
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S", "B"]
 "tools/**" = ["S603", "S607"]   # dev tooling shells out with fixed, non-user-controlled arguments
+# SQL adapters: every query is a static template with bound :params; the only
+# interpolated fragments are constant column lists or equality-derived keywords
+# (ASC/DESC, >/ <, whitelisted status literals) — never request input.
+"services/api/src/fs_api/adapters/pg_sql.py" = ["S608"]
+"services/api/src/fs_api/adapters/duckdb_reports.py" = ["S608"]
+# TOKEN_BUCKET_LUA is a Lua rate-limit script, not a credential.
+"services/api/src/fs_api/adapters/redis_store.py" = ["S105"]
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"

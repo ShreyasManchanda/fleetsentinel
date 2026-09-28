@@ -299,7 +299,7 @@ def generate_fleet(seed: int = 42, total_vehicles: int | None = None, tenants_pa
     tenant_idx = np.repeat(np.arange(len(tenants), dtype=np.int16), [t.size for t in tenants])
     powertrain, oem_idx, model_idx = _assign_powertrain_oem(rng, tenants, n)
     fleets, fleet_idx, home_site = _assign_fleets(rng, tenants, n, n_sites)
-    vins = _make_vins(random.Random(seed * 1_000_003 + 17), oem_idx)
+    vins = _make_vins(random.Random(seed * 1_000_003 + 17), oem_idx)  # noqa: S311 — seeded sim RNG, not crypto
     driver_idx, driver_fleet, driver_tenant, driver_aggr = _assign_drivers(rng, fleets, fleet_idx)
     sw_idx = rng.integers(0, 3, size=n).astype(np.int8)
     for o, code in enumerate(OEM_CODES):

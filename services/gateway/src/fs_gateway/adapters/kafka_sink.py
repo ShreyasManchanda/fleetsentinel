@@ -47,7 +47,7 @@ class KafkaSink:
                 if not fut.done():
                     fut.set_result(err is None)
 
-            for attempt in range(20):
+            for _attempt in range(20):
                 try:
                     self._p.produce(m.topic, key=m.key, value=m.value, headers=list(m.headers.items()), on_delivery=cb)
                     break

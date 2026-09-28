@@ -19,7 +19,7 @@ from .features import DAY_MS, maintenance_labels
 from .fleet import Fleet, generate_fleet
 from .lake import VEHICLE_SHARDS, LakeWriter, make_filesystem
 from .oltp import TABLE_ORDER, RefIds, build_tables, driver_ids, trips_to_table, vehicle_ids
-from .routes import RouteLibrary, build_library
+from .routes import build_library
 
 log = structlog.get_logger("fs_simulator.seed")
 PROFILES = {"lite": {"dt_lake": 600.0}, "full": {"dt_lake": 60.0}}

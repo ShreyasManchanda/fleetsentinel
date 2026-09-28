@@ -4,11 +4,10 @@ import json
 
 import numpy as np
 import pytest
-from helpers_sim import make_sim, run
-from fscore.mapping_engine import Mapping
-
 from fs_simulator.constants import OEM_CODES, mappings_dir
 from fs_simulator.encoders import D_COLS, EncodeContext, encode, encode_d_rows, iso_ms, wrap_batch
+from fscore.mapping_engine import Mapping
+from helpers_sim import make_sim, run
 
 MAP_FILE = {"OEM_A": "oem_a", "OEM_B": "oem_b", "OEM_C": "oem_c", "OEM_D": "oem_d_draft"}
 

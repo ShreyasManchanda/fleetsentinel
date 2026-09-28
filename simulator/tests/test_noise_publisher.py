@@ -5,13 +5,12 @@ import json
 
 import numpy as np
 import pytest
-from fscore.hashing import vin_shard
-
 from fs_simulator import groundtruth as G
 from fs_simulator.behaviour import SimConfig
 from fs_simulator.constants import EVT, OEM_CODES
 from fs_simulator.noise import NoiseInjector, concat_emissions
 from fs_simulator.publisher import Connector, DriftControl, ListTransport, SimPublisher, is_event_lane
+from fscore.hashing import vin_shard
 from helpers_sim import make_sim
 
 CFG = SimConfig(emit_driving_s=1, emit_idle_s=2, emit_parked_s=3, emit_charging_s=3)
@@ -92,7 +91,6 @@ def test_topics_shard_by_vin_and_lanes(fleet, routes):
         lane, oem, shard = topic.split("/")
         assert oem in OEM_CODES and 0 <= int(shard) < 64
         seen_lanes.add(lane)
-        b = json.loads(payload)
         if oem == "OEM_D":
             continue
         for r in _records(payload, oem):

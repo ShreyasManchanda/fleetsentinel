@@ -6,21 +6,15 @@ Faults/noise live in faults.py (mixin); the hidden wear state lives in wear.py.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
 from .constants import (
-    CHARGING,
-    DRIVING,
     DTC_EV,
     DTC_ICE,
     DTC_INDEX,
-    EVT,
-    IDLING,
-    IST_OFFSET_S,
     MODELS,
-    PARKED,
     PT_EV,
     PT_HYBRID,
     PT_ICE,
@@ -30,7 +24,7 @@ from .faults import FaultMixin
 from .fleet import Fleet
 from .groundtruth import GroundTruth
 from .routes import RouteLibrary
-from .wear import WearModel, dtc_rate_per_hour
+from .wear import WearModel
 
 MODEL_CAP = np.array([m[3] or 0.0 for m in MODELS])
 MODEL_TANK = np.array([m[6] for m in MODELS])

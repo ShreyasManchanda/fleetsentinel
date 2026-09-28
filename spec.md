@@ -449,7 +449,7 @@ The gateway does only the following:
 2. Validate the envelope (size ≤ 1 MB, known OEM, record count).
 3. Deduplicate retried batches: a **Bloom filter is used as a negative filter only**. A "not seen" answer is trusted. A "maybe seen" answer is confirmed against an exact Redis `SET` with a TTL. So a Bloom false positive costs one extra Redis lookup and **can never drop valid data**, which fixes the v2 flaw.
 4. Produce the batch to `ingest.raw.v1` using the idempotent producer (`enable.idempotence=true`, `acks=all`, zstd).
-5. Scan the batch cheaply with the OEM mapping's `priority_selector` and copy critical records to `ingest.priority.v1`.
+5. Route by MQTT channel, not by payload scan: batches arriving on `event/{oem}/{shard}` (critical events + lender-watchlist telemetry, sent by the OEM connector on its separate channel) go to `ingest.priority.v1`; everything on `telemetry/{oem}/{shard}` goes to `ingest.raw.v1`. There is no per-record `priority_selector` in the mapping DSL (removed; see decisions log) — channel separation is what keeps the fast lane unblockable behind bulk backlog.
 
 **Back-pressure [T0]:**
 - The path runs through a bounded `asyncio.Queue` (10k batches).
@@ -475,8 +475,7 @@ fields:
   speed_kmh: { path: "$.sp_mph", transform: [{ mul: 1.609344 }] }
   fuel_pct:  { path: "$.fl" }
   dtc:       { path: "$.codes",  transform: [split_csv, validate_dtc] }
-  evt:       { path: "$.ev",     transform: [{ enum_map: { HB: HARSH_BRAKE, HA: HARSH_ACCEL, TW: TOW, CR: CRASH } }] }
-priority_selector: { path: "$.ev", in: [TW, CR] }
+   evt:       { path: "$.ev",     transform: [{ enum_map: { HB: HARSH_BRAKE, HA: HARSH_ACCEL, TW: TOW, CR: CRASH } }] }
 drop_unmapped: true   # data minimisation: unknown fields never enter the platform
 ```
 

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import orjson
 import yaml
-from fscore.mapping_engine import Mapping, to_proto
+from fscore.mapping_engine import to_proto
 from fscore.mapping_fast import FastMapping
 from fscore.vin import make_vin
 
@@ -64,7 +64,7 @@ def rate(fn, records: int, reps: int = 5) -> float:
 
 
 def main(batch: int = 1000, n_batches: int = 8) -> dict[str, dict[str, float]]:
-    rng = random.Random(7)
+    rng = random.Random(7)  # noqa: S311 — deterministic bench workload, not crypto
     vins = [make_vin("1HG", rng) for _ in range(2000)]
     results: dict[str, dict[str, float]] = {}
     reg = MappingRegistry()
@@ -78,10 +78,12 @@ def main(batch: int = 1000, n_batches: int = 8) -> dict[str, dict[str, float]]:
         fm = FastMapping(m)
         total = batch * n_batches
         msgs = [InMsg("ingest.raw.v1", 0, i, f"{oem}:1".encode(), r, {"oem": oem.encode()}, NOW) for i, r in enumerate(raws)]
-        ref = rate(lambda: [m.apply(p, NOW) for p in parsed], total)
-        fast = rate(lambda: [fm.apply(p, NOW) for p in parsed], total)
-        proto_ref = rate(lambda: [[to_proto(x, NOW).SerializeToString() for x in m.apply(p, NOW).ok] for p in parsed], total)
-        full = rate(lambda: core.process(msgs), total)
+        # Bind loop vars as defaults: the lambdas run synchronously below, but
+        # late binding would still measure the wrong iteration if reused.
+        ref = rate(lambda m=m, parsed=parsed: [m.apply(p, NOW) for p in parsed], total)
+        fast = rate(lambda fm=fm, parsed=parsed: [fm.apply(p, NOW) for p in parsed], total)
+        proto_ref = rate(lambda m=m, parsed=parsed: [[to_proto(x, NOW).SerializeToString() for x in m.apply(p, NOW).ok] for p in parsed], total)
+        full = rate(lambda core=core, msgs=msgs: core.process(msgs), total)
         results[oem] = {"reference": ref, "fast": fast, "reference_plus_proto": proto_ref, "full_pipeline": full}
         print(f"{oem}: reference {ref:,.0f}/s | fast {fast:,.0f}/s ({fast / ref:.1f}x) | reference+proto {proto_ref:,.0f}/s | "
               f"full normaliser (json->proto bytes, encrypt) {full:,.0f}/s ({full / proto_ref:.1f}x vs reference+proto)")

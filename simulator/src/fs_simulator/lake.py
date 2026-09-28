@@ -47,7 +47,7 @@ def emission_to_table(em: Emission, block_vins: np.ndarray) -> pa.Table:
 
 
 def make_filesystem(local_root: str | None = None, endpoint: str = "localhost:9000", access_key: str = "minioadmin",
-                    secret_key: str = "minioadmin"):
+                    secret_key: str = "minioadmin"):  # noqa: S107 — local-dev MinIO default, matches compose; prod uses env/Vault
     if local_root is not None:
         return pafs.LocalFileSystem()
     return pafs.S3FileSystem(endpoint_override=endpoint, scheme="http", access_key=access_key, secret_key=secret_key, region="us-east-1")

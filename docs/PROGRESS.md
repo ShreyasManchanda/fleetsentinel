@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-28 19:05 IST** by the integrator.
+> Last updated: **2026-09-28 23:19 IST** by the integrator.
 
 ## Clock
 
@@ -32,7 +32,7 @@
 |---|---|---|---|---|
 | Phase 0 | contracts, migrations, mapping engine, infra config | integrator | DONE | 72 tests, 100% on vin/dtc/hashing/contracts, 91% mapping engine |
 | A | simulator + seed | agent (lost, see log) | PARTIAL | 33 py files, 59 tests pass; no final report (agent rate-limited). Needs verification vs §6/DoD |
-| B | ingestion + stream processing | agent (lost) + integrator fixes | PARTIAL | gateway (33) + normalizer (14) + algorithms/sketches/crypto/mapping_fast green (165 libs). **processor + lake_sink still skeletons.** 3 test-side bugs fixed by integrator (B-016) |
+| B | ingestion + stream processing | agent (bg task, launched 23:05) + integrator fixes | PARTIAL | gateway (33) + normalizer (14) + algorithms/sketches/crypto/mapping_fast green (165 libs). **Processor + lake_sink being built now.** 3 test-side bugs fixed by integrator (B-016) |
 | C | API + security | agent (lost, see log) | PARTIAL | 67 py files, 23 tests pass; no final report. RLS/BOLA gates need real-Postgres check (M1) |
 | D | intelligence (ML + copilot + batch) | unassigned | NOT STARTED | waits for stream A ground truth; launch next when A/B/C land (RAM) |
 | E | web | unassigned | NOT STARTED | can start on a mock of `openapi.yaml` |

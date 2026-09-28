@@ -12,7 +12,15 @@ from ...errors import unavailable
 from ...ports import AgentUnavailable
 from ..context import Ctx, bearer_token, require
 from ..idempotency import run_idempotent
-from ..models import ActionPage, ActionProposalCreate, AgentAction, AgentAnswer, AgentChatRequest, Briefing, RejectBody
+from ..models import (
+    ActionPage,
+    ActionProposalCreate,
+    AgentAction,
+    AgentAnswer,
+    AgentChatRequest,
+    Briefing,
+    RejectBody,
+)
 from ._common import PROBLEM_RESPONSES, CursorQ, IdemH, LimitQ, dump
 
 router = APIRouter(tags=["Agent"], responses=PROBLEM_RESPONSES)

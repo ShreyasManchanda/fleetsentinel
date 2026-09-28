@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-
 from fs_simulator.behaviour import FleetSim, SimConfig
 from fs_simulator.groundtruth import GroundTruth
 

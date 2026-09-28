@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
+from fs_simulator.constants import CENTER_LAT, CENTER_LON
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-from fs_simulator.constants import CENTER_LAT, CENTER_LON
 
 
 def test_library_size_and_geometry(routes):

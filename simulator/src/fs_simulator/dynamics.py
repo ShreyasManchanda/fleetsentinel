@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .constants import CHARGING, DRIVING, DTC_ALL, EVT, IDLING, IST_OFFSET_S, PARKED
+from .constants import CHARGING, DRIVING, EVT, IDLING, IST_OFFSET_S, PARKED
 from .wear import dtc_rate_per_hour
 
 
@@ -93,7 +93,7 @@ class DynamicsMixin:
         st[idl & ~self.trip_done] = DRIVING
 
     def _kinematics(self, t: float, dt: float, evt: np.ndarray) -> None:
-        n, rng, st = self.n, self.rng, self.state
+        rng, st = self.rng, self.state
         normal = self.mode == 0
         drv = normal & (st == DRIVING)
         idx = np.flatnonzero(drv)
@@ -131,7 +131,7 @@ class DynamicsMixin:
                 self.trip_night[act] += dt
 
     def _resources(self, t: float, dt: float) -> None:
-        n, rng, st = self.n, self.rng, self.state
+        rng, st = self.rng, self.state
         moving = st == DRIVING
         dist = np.where(moving, self.speed * dt / 3600.0, 0.0)
         idle_h = np.where(st == IDLING, dt / 3600.0, 0.0)

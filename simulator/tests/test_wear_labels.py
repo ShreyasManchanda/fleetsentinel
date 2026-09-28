@@ -3,10 +3,6 @@ from __future__ import annotations
 import numpy as np
 import pyarrow as pa
 import pytest
-from helpers_sim import make_sim
-from hypothesis import given, settings
-from hypothesis import strategies as st
-
 from fs_simulator import groundtruth as G
 from fs_simulator.behaviour import SimConfig
 from fs_simulator.constants import DTC_ALL
@@ -20,6 +16,9 @@ from fs_simulator.features import (
 )
 from fs_simulator.lake import emission_to_table
 from fs_simulator.wear import WearModel, dtc_rate_per_hour, hazard_per_day, soh_rate_pct_per_day
+from helpers_sim import make_sim
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 
 def test_signals_are_increasing_functions_of_wear():

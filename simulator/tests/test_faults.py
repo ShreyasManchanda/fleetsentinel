@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from helpers_sim import make_sim
-
 from fs_simulator import groundtruth as G
 from fs_simulator.behaviour import SimConfig
 from fs_simulator.constants import EVT
+from helpers_sim import make_sim
 
 T_MORNING = 1_790_000_000.0 - (1_790_000_000.0 % 86400) - 19800 + 6 * 3600     # 06:00 IST
 

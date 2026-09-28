@@ -4,13 +4,12 @@ import re
 
 import numpy as np
 import pytest
+from fs_simulator.constants import MODELS, OEM_CODES, OEMS_FOR_POWERTRAIN, repo_root
+from fs_simulator.fleet import generate_fleet, load_tenant_config, power_law_sizes
 from fscore.contracts import tenant_id
 from fscore.vin import is_valid_vin
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-from fs_simulator.constants import MODELS, OEM_CODES, OEMS_FOR_POWERTRAIN, repo_root
-from fs_simulator.fleet import generate_fleet, load_tenant_config, power_law_sizes
 
 
 def test_full_fleet_shape(full_fleet):

@@ -5,10 +5,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+import api_fakes as fakes
 import jwt
-import pytest
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 from fs_api.api.app import create_app
 from fs_api.config import Settings
 from fs_api.container import Deps
@@ -18,8 +17,6 @@ from fs_api.metrics import Metrics
 from fs_api.security.jwt_auth import JwtValidator, StaticJwksProvider
 from fscore.crypto import LocalDevWrapper, SubjectKeyStore
 from starlette.testclient import TestClient
-
-import api_fakes as fakes
 
 ISS = "http://localhost:8080/realms/fleetsentinel"
 AUD = "fs-api"

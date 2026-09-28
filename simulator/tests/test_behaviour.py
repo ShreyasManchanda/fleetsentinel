@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import numpy as np
+from fs_simulator.behaviour import Emission, SimConfig
+from fs_simulator.constants import CHARGING, DRIVING, EVT, IDLING, PARKED
 from helpers_sim import T0, make_sim, run
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-from fs_simulator.behaviour import Emission, SimConfig
-from fs_simulator.constants import CHARGING, DRIVING, EVT, IDLING, PARKED
 
 
 def _cat(ems):
