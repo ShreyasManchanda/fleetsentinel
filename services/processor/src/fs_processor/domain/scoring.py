@@ -61,7 +61,6 @@ class RiskScorer:
         """Returns (risk 0..1, model_version). Never raises: model errors fall back."""
         if self._booster is not None:
             try:
-                import numpy as np
 
                 p = float(self._booster.predict([features.vector()])[0])
                 return min(max(p, 0.0), 1.0), self.model_version

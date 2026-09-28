@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from fleetsentinel.v1 import alert_pb2
 from fscore import contracts as C
