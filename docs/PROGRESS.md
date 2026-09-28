@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-29 ~00:15 IST** by the integrator.
+> Last updated: **2026-09-29 ~00:30 IST** by the integrator.
 
 ## Clock
 
@@ -19,7 +19,7 @@
 |---|---|---|---|
 | M0 | Phase 0: contracts + skeleton committed | Mon 28 Sep | DONE (commit `f93d27a`) |
 | M0b | Living docs + repo `CLAUDE.md` + docs check | Mon 28 Sep | DONE (pre-commit hook + CI `docs-fresh` job) |
-| M1 | Migrations verified on a real Timescale/pgvector Postgres | Mon 28 Sep night / Tue AM | BLOCKED (image pull + RAM, see Blockers) |
+| M1 | Migrations verified on a real Timescale/pgvector Postgres | Mon 28 Sep night / Tue AM | DONE (2026-09-29 ~00:30 IST: `fs-pg` up, all 7 applied clean; timescaledb 2.30.1/vector 0.8.6; RLS proven B-019; B-013 FIXED). Container left running for stream C/D use |
 | M2 | Thin slice: simulator -> gateway -> Kafka -> normalizer -> processor -> Redis -> live vehicles visible | Tue 29 Sep EOD | NOT STARTED |
 | M3 | Alerts + API + auth + basic copilot real | Wed 30 Sep midday | NOT STARTED |
 | M4 | Feature freeze (all T0 + agreed T1) | Wed 30 Sep 22:00 | NOT STARTED |
@@ -56,7 +56,7 @@
 | Blocker / risk | Impact | Status | Next action |
 |---|---|---|---|
 | Local RAM: browser closed -> 71% committed, ~1.5 GB free (was 91% / 230 MB); `opencode` (~2 GB) + Traycer still resident | Docker stack + agents may still thrash | WORSE AGAIN | 2026-09-29 ~00:05 IST: back to **92.8% committed, ~1 GB free**. Docker engine down again (pipe missing). No container work until memory frees; builders work with fakes/--local only |
-| `timescale/timescaledb-ha:pg17` (~2 GB) pull dies with `unexpected EOF` | Cannot test migrations locally | OPEN | Retry when memory is free; fallback = test on cloud VM |
+| `timescale/timescaledb-ha:pg17` (~2 GB) pull dies with `unexpected EOF` | Cannot test migrations locally | FIXED | 2026-09-29: layers were cached (4.05 GB image present); pull completed instantly after engine restart |
 | Mapping engine ~11k rec/s/core | 100k/s needs ~9 cores of normalization | OPEN (assigned to stream B) | Batch-vectorised fast path, report measured rate |
 | Solution Document template not in the folder | Submission format risk | OPEN, needs user | User to supply; content is pre-structured in spec section 20 |
 | Deadline unconfirmed | Schedule | OPEN, needs user | Confirm date/time and timezone |
