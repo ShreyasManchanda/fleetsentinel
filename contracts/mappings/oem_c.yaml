@@ -1,0 +1,21 @@
+oem: OEM_C
+version: 1
+envelope:
+  records: "$.events[*]"
+  batch_id: "$.batch_id"
+fields:
+  vin:        { path: "$.vin", transform: [strip, upper, validate_vin] }
+  ts_ms:      { path: "$.ts", transform: [iso8601_to_ms] }
+  seq:        { path: "$.seq", transform: [to_int], default: 0 }
+  lat:        { path: "$.lat", transform: [to_float] }
+  lon:        { path: "$.lon", transform: [to_float] }
+  speed_kmh:  { path: "$.speed_kmh", transform: [to_float, { clamp: [0, 350] }] }
+  soc_pct:    { path: "$.soc_pct", transform: [to_float, { clamp: [0, 100] }] }
+  odo_km:     { path: "$.odo_km", transform: [to_float] }
+  dtc:        { path: "$.dtc", transform: [validate_dtc] }
+  evt:
+    path: "$.evt"
+    transform:
+      - enum_map: { HARSH_BRAKE: HARSH_BRAKE, HARSH_ACCEL: HARSH_ACCEL, TOW: TOW, CRASH: CRASH, OVERSPEED: OVERSPEED, DTC_SET: DTC_SET }
+  ignition:   { any: ["$.ignition", "$.ign"], transform: [to_bool], default: true }
+drop_unmapped: true

@@ -1,0 +1,22 @@
+oem: OEM_B
+version: 1
+envelope:
+  records: "$.d[*]"
+  batch_id: "$.bid"
+fields:
+  vin:        { path: "$.v", transform: [strip, upper, validate_vin] }
+  ts_ms:      { path: "$.t", transform: [to_int] }
+  lat:        { path: "$.la", transform: [to_float] }
+  lon:        { path: "$.lo", transform: [to_float] }
+  speed_kmh:  { path: "$.sp_mph", transform: [to_float, { mul: 1.609344 }, { round: 1 }, { clamp: [0, 350] }] }
+  odo_km:     { path: "$.od_mi", transform: [to_float, { mul: 1.609344 }, { round: 1 }] }
+  fuel_pct:   { path: "$.fl", transform: [to_float, { clamp: [0, 100] }] }
+  ignition:   { path: "$.ig", transform: [to_bool] }
+  dtc:        { path: "$.codes", transform: [split_csv, validate_dtc] }
+  sw_version: { path: "$.fw" }
+  driver_ref: { path: "$.dr" }
+  evt:
+    path: "$.ev"
+    transform:
+      - enum_map: { HB: HARSH_BRAKE, HA: HARSH_ACCEL, ON: IGNITION_ON, OFF: IGNITION_OFF, TW: TOW, CR: CRASH, OS: OVERSPEED, DT: DTC_SET }
+drop_unmapped: true

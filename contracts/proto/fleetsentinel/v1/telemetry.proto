@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package fleetsentinel.v1;
+
+// Canonical, post-normalization telemetry event. Topic: telemetry.normalized.v1 (key = vin).
+// Schema evolution rule: BACKWARD compatible only (add optional fields, never reuse/renumber).
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  POSITION = 1;        // periodic position/telemetry sample
+  HARSH_BRAKE = 2;
+  HARSH_ACCEL = 3;
+  IGNITION_ON = 4;
+  IGNITION_OFF = 5;
+  TOW = 6;             // movement while ignition off (OEM-flagged or derived)
+  CRASH = 7;
+  CHARGING_START = 8;
+  CHARGING_END = 9;
+  DTC_SET = 10;        // one or more diagnostic trouble codes became active
+  OVERSPEED = 11;
+}
+
+message TelemetryEvent {
+  string vin = 1;                  // ISO 3779 validated, 17 chars
+  int64 ts_ms = 2;                 // event time, epoch millis UTC
+  int64 seq = 3;                   // per-VIN monotonic when the OEM provides it, else 0
+  double lat = 4;
+  double lon = 5;
+  float speed_kmh = 6;
+  optional float soc_pct = 7;      // EV / hybrid state of charge, 0..100
+  optional float fuel_pct = 8;     // ICE / hybrid fuel level, 0..100
+  double odo_km = 9;
+  repeated string dtc = 10;        // validated ^[PBCU][0-9A-F]{4}$
+  EventType evt = 11;
+  bool ignition = 12;
+  string sw_version = 13;          // OTA / software-defined-vehicle tracking
+  string oem = 14;                 // OEM code, e.g. OEM_A
+  int64 ingest_ts_ms = 15;         // set by the gateway; used for end-to-end latency metrics
+  bytes driver_ref_enc = 16;       // Vault-Transit ciphertext of the driver reference; never plaintext PII
+  optional float soh_pct = 17;     // EV battery state of health when reported
+  optional float engine_temp_c = 18;
+}

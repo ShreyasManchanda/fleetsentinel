@@ -1,0 +1,33 @@
+[project]
+name = "fs-ml"
+version = "0.1.0"
+description = "Feature building, LightGBM training/evaluation, safety score, look-alike vectors"
+requires-python = ">=3.12"
+dependencies = [
+  "fscore",
+  "structlog>=24.4",
+  "prometheus-client>=0.21",
+  "orjson>=3.10",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "opentelemetry-api>=1.27",
+  "opentelemetry-sdk>=1.27",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.27",
+  "lightgbm>=4.5",
+  "scikit-learn>=1.5",
+  "duckdb>=1.1",
+  "pandas>=2.2",
+  "pyarrow>=17.0",
+  "matplotlib>=3.9",
+  "psycopg[binary,pool]>=3.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fs_ml"]
+
+[tool.uv.sources]
+fscore = { workspace = true }

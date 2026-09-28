@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package fleetsentinel.v1;
+
+// Topic: vehicle.state.v1 (key = vin, log-compacted). Latest state per vehicle; drives the live map.
+
+enum VehicleStatus {
+  VEHICLE_STATUS_UNSPECIFIED = 0;
+  PARKED = 1;
+  DRIVING = 2;
+  IDLING = 3;
+  CHARGING = 4;
+  OFFLINE = 5;      // going dark
+  TOWED = 6;
+}
+
+message VehicleState {
+  string vin = 1;
+  string tenant_id = 2;
+  int64 ts_ms = 3;
+  double lat = 4;
+  double lon = 5;
+  float speed_kmh = 6;
+  VehicleStatus status = 7;
+  optional float soc_pct = 8;
+  optional float fuel_pct = 9;
+  bool ignition = 10;
+  float risk_score = 11;           // 0..1 latest maintenance risk (0 if unscored)
+  uint32 open_alerts = 12;
+  int64 ingest_ts_ms = 13;
+  string oem = 14;
+}

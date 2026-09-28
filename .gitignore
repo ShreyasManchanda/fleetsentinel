@@ -1,0 +1,29 @@
+# secrets / generated
+deploy/certs/
+.env
+*.pem
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+# node
+node_modules/
+web/dist/
+# data
+data/
+*.parquet
+!contracts/**/*.parquet
+# terraform
+.terraform/
+*.tfstate*
+*.tfvars
+!*.tfvars.example
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

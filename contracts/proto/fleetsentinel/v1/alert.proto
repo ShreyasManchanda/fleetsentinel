@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package fleetsentinel.v1;
+
+// Topic: alerts.v1 (key = vin). Deterministic alert_id = uuid5(NAMESPACE_FS, f"{vin}|{rule_code}|{window_start_ms}")
+// so re-emission after replay is harmless (Postgres ON CONFLICT DO NOTHING).
+
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  INFO = 1;
+  WARNING = 2;
+  CRITICAL = 3;
+}
+
+// Stable rule codes (values are RULE_-prefixed because proto3 enum values share the package namespace with EventType.TOW/CRASH).
+// In Postgres/JSON the code is stored without the prefix, e.g. RULE_TOW -> 'TOW'. New rules append; never renumber.
+enum RuleCode {
+  RULE_CODE_UNSPECIFIED = 0;
+  RULE_TOW = 1;
+  RULE_CRASH = 2;
+  RULE_GEOFENCE_BREACH = 3;
+  RULE_CRITICAL_DTC = 4;
+  RULE_LOW_SOC_STRANDING = 5;
+  RULE_GOING_DARK = 6;
+  RULE_EXCESSIVE_IDLING = 7;
+  RULE_HARSH_DRIVING = 8;
+  RULE_MAINTENANCE_RISK = 9;
+  RULE_UNAPPROVED_DEPOT_CLUSTER = 10;
+  RULE_ODOMETER_ROLLBACK = 11;
+  RULE_SCHEMA_DRIFT = 12;
+}
+
+message Alert {
+  string alert_id = 1;             // deterministic uuid5, see header comment
+  string tenant_id = 2;
+  string vin = 3;
+  RuleCode rule = 4;
+  Severity severity = 5;
+  int64 window_start_ms = 6;       // start of the evaluation window / triggering event time
+  int64 event_ts_ms = 7;           // event time that triggered it
+  int64 detected_ts_ms = 8;        // wall-clock at detection; detected - event = alert latency
+  double lat = 9;
+  double lon = 10;
+  string summary = 11;             // short human-readable text
+  map<string, string> details = 12;// rule-specific facts (dtc, idle_s, risk, ...)
+  double impact_usd = 13;          // estimated $ impact at creation; 0 if not applicable
+  int64 ingest_ts_ms = 14;         // ingest time of the triggering event (for e2e latency)
+  string trace_id = 15;            // W3C trace id, links alert to its ingest-to-screen trace
+}

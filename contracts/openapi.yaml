@@ -1,0 +1,698 @@
+openapi: 3.1.0
+info:
+  title: FleetSentinel API
+  version: 1.0.0
+  summary: Connected-vehicle intelligence API (contract-first; web and agent are built against this file).
+  description: |
+    **Auth:** OIDC bearer JWT issued by Keycloak (RS256; `iss`, `aud=fs-api`, `exp`, `nbf` enforced). The tenant comes ONLY from
+    the `tenant_id` claim and is applied by Postgres Row-Level Security (`app.tenant_id`); it is never accepted from the request.
+    **Roles** (`roles` claim): platform_admin, fleet_admin, analyst, viewer, lender_agent (403 on insufficient role; deny by default).
+    **Pagination:** keyset with an opaque `cursor`; `limit` max 200. **Errors:** RFC 9457 `application/problem+json`.
+    **Rate limits:** per tenant 1000/min, per user 300/min, copilot 20/min; `429` + `Retry-After` + `RateLimit-*` headers.
+    **Idempotency:** state-changing POSTs require an `Idempotency-Key` header (replays return the original result).
+    **Audit:** EVERY request (allow or deny) emits an audit event (actor, tenant, route, resource ids, purpose, decision, latency).
+    **Purpose:** requests touching precise driver/vehicle location SHOULD send `X-Purpose` (OPERATIONS default | RECOVERY | SAFETY_REVIEW | COMPLIANCE); it is recorded in the audit log and gates precision (e.g. RECOVERY only for lender_agent on flagged vehicles).
+    **Live data (WebSocket, not expressible in OpenAPI 3.1):** `GET /v1/stream` upgrades to WebSocket. First client message MUST be
+    `{"type":"auth","token":"<jwt>"}` (never in the URL). Then `{"type":"subscribe","bbox":[w,s,e,n],"zoom":12}` or `{"type":"subscribe","topics":["alerts"]}`.
+    Server pushes: `{"type":"positions","ts":...,"data":"<base64 Float32Array [lat,lon,status,...] per vehicle>"}` (1 Hz deltas; below zoom 9 sends
+    `{"type":"cells","cells":[{"geohash":"tdr1w","count":312,"idle":41}]}` instead), `{"type":"alert","alert":Alert}`, `{"type":"freshness","p95_ms":1240}`.
+  license: { name: Proprietary (hackathon submission), identifier: LicenseRef-Hackathon }
+servers:
+  - url: http://localhost:8000
+    description: local compose / kind
+security:
+  - oidc: []
+tags:
+  - { name: Fleet }
+  - { name: Vehicles }
+  - { name: Alerts }
+  - { name: Drivers }
+  - { name: Reports }
+  - { name: Agent }
+  - { name: Platform, description: OEM onboarding and data quality (platform_admin / fleet_admin) }
+  - { name: Compliance }
+  - { name: Ops }
+paths:
+  /healthz:
+    get: { tags: [Ops], security: [], summary: Liveness, responses: { '200': { description: alive } } }
+  /readyz:
+    get:
+      tags: [Ops]
+      security: []
+      summary: Readiness (checks Postgres, Redis, Kafka; reports consumer lag)
+      responses:
+        '200': { description: ready }
+        '503': { $ref: '#/components/responses/Problem' }
+  /v1/me:
+    get:
+      tags: [Fleet]
+      summary: Caller identity and effective permissions
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+  /v1/fleet/summary:
+    get:
+      tags: [Fleet]
+      summary: Command-center KPIs (served from Redis/continuous aggregates; p95 < 200 ms)
+      parameters: [{ $ref: '#/components/parameters/FleetId' }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/FleetSummary' } } } }
+        '429': { $ref: '#/components/responses/Problem' }
+  /v1/vehicles:
+    get:
+      tags: [Vehicles]
+      summary: List vehicles (keyset pagination; alert counts joined in ONE query - no N+1)
+      parameters:
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/FleetId' }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/VehicleStatus' } }
+        - { name: min_risk, in: query, schema: { type: number, minimum: 0, maximum: 1 } }
+        - { name: vin_prefix, in: query, schema: { type: string, minLength: 3, maxLength: 17 } }
+        - { name: sort, in: query, schema: { type: string, enum: [risk_desc, vin_asc], default: risk_desc } }
+      responses:
+        '200': { description: page, content: { application/json: { schema: { $ref: '#/components/schemas/VehiclePage' } } } }
+  /v1/vehicles/{vin}:
+    get:
+      tags: [Vehicles]
+      summary: Vehicle 360 (relational core + Mongo digital twin + state + risk + recent alerts/trips)
+      parameters: [{ $ref: '#/components/parameters/Vin' }, { $ref: '#/components/parameters/Purpose' }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Vehicle360' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /v1/vehicles/{vin}/trips:
+    get:
+      tags: [Vehicles]
+      summary: Trip history (keyset on (start_ts,id))
+      parameters: [{ $ref: '#/components/parameters/Vin' }, { $ref: '#/components/parameters/Cursor' }, { $ref: '#/components/parameters/Limit' }]
+      responses:
+        '200': { description: page, content: { application/json: { schema: { $ref: '#/components/schemas/TripPage' } } } }
+  /v1/vehicles/{vin}/risk:
+    get:
+      tags: [Vehicles]
+      summary: Latest maintenance risk with SHAP reason codes and the cost-optimal recommendation
+      parameters: [{ $ref: '#/components/parameters/Vin' }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/RiskDetail' } } } }
+  /v1/vehicles/{vin}/lookalikes:
+    get:
+      tags: [Vehicles]
+      summary: Vehicles whose recent telemetry signature resembles pre-failure vehicles (pgvector HNSW kNN, under RLS)
+      parameters:
+        - { $ref: '#/components/parameters/Vin' }
+        - { name: k, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 5 } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Lookalike' } } } } }
+  /v1/map/viewport:
+    get:
+      tags: [Fleet]
+      summary: Snapshot of vehicles in a viewport (REST fallback for the WebSocket; aggregated to geohash cells at low zoom)
+      parameters:
+        - { name: bbox, in: query, required: true, schema: { type: string, examples: ['77.4,12.8,77.8,13.2'] }, description: 'west,south,east,north' }
+        - { name: zoom, in: query, required: true, schema: { type: integer, minimum: 1, maximum: 20 } }
+        - { $ref: '#/components/parameters/Purpose' }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/MapViewport' } } } }
+  /v1/alerts:
+    get:
+      tags: [Alerts]
+      summary: Alert queue (keyset; hits the partial index on open/ack alerts)
+      parameters:
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { name: status, in: query, schema: { type: array, items: { $ref: '#/components/schemas/AlertStatus' } }, style: form, explode: false }
+        - { name: severity, in: query, schema: { $ref: '#/components/schemas/Severity' } }
+        - { name: rule, in: query, schema: { $ref: '#/components/schemas/RuleCode' } }
+        - { name: vin, in: query, schema: { type: string } }
+        - { name: since, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200': { description: page, content: { application/json: { schema: { $ref: '#/components/schemas/AlertPage' } } } }
+  /v1/alerts/{id}:
+    get:
+      tags: [Alerts]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Alert' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /v1/alerts/{id}/ack:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge (idempotent)
+      parameters: [{ $ref: '#/components/parameters/UuidId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '200': { description: updated, content: { application/json: { schema: { $ref: '#/components/schemas/Alert' } } } }
+  /v1/alerts/{id}/resolve:
+    post:
+      tags: [Alerts]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '200': { description: updated, content: { application/json: { schema: { $ref: '#/components/schemas/Alert' } } } }
+  /v1/drivers:
+    get:
+      tags: [Drivers]
+      summary: Driver scorecards (exposure-normalised; PII decrypted only for authorised roles, else pseudonymous id)
+      parameters: [{ $ref: '#/components/parameters/Cursor' }, { $ref: '#/components/parameters/Limit' }, { $ref: '#/components/parameters/FleetId' },
+                   { name: sort, in: query, schema: { type: string, enum: [score_asc, score_desc], default: score_asc } }]
+      responses:
+        '200': { description: page, content: { application/json: { schema: { $ref: '#/components/schemas/DriverPage' } } } }
+  /v1/drivers/{id}:
+    get:
+      tags: [Drivers]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }, { $ref: '#/components/parameters/Purpose' }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/DriverDetail' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /v1/reports/cost:
+    get:
+      tags: [Reports]
+      summary: Cost leakage and savings opportunity (from mv_fleet_cost_daily / fleet_metrics_1h)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: group_by, in: query, schema: { type: string, enum: [day, fleet, powertrain], default: day } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/CostReport' } } } }
+  /v1/reports/batch:
+    post:
+      tags: [Reports]
+      summary: Run a PREDEFINED DuckDB analytics report over the lake (never free-form SQL)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BatchReportRequest' } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/BatchReportResult' } } } }
+  /v1/insights/export:
+    get:
+      tags: [Compliance]
+      summary: Privacy-safe aggregate export (geohash-5 generalisation + k-anonymity suppression k>=10; no VIN or driver identifiers)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/InsightExport' } } } }
+  /v1/agent/chat:
+    post:
+      tags: [Agent]
+      summary: Ask the copilot (allowlisted read-only tools; numeric-grounding check; audited)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AgentChatRequest' } } }
+      responses:
+        '200': { description: answer, content: { application/json: { schema: { $ref: '#/components/schemas/AgentAnswer' } } } }
+        '429': { $ref: '#/components/responses/Problem' }
+        '503': { description: copilot unavailable (LLM down / no key) - platform continues, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+  /v1/agent/briefing:
+    get:
+      tags: [Agent]
+      summary: Latest daily briefing (LLM-written when available, else rules-generated)
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Briefing' } } } }
+    post:
+      tags: [Agent]
+      summary: Generate a fresh briefing now and create PENDING action proposals
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '202': { description: generated, content: { application/json: { schema: { $ref: '#/components/schemas/Briefing' } } } }
+  /v1/agent/actions:
+    get:
+      tags: [Agent]
+      summary: Action proposals (approval queue)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, approved, rejected] } }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200': { description: page, content: { application/json: { schema: { $ref: '#/components/schemas/ActionPage' } } } }
+    post:
+      tags: [Agent]
+      summary: Create a PENDING proposal (the only write the agent may perform; humans approve)
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ActionProposalCreate' } } }
+      responses:
+        '201': { description: created, content: { application/json: { schema: { $ref: '#/components/schemas/AgentAction' } } } }
+  /v1/agent/actions/{id}/approve:
+    post:
+      tags: [Agent]
+      summary: Approve a pending proposal -> creates a work order (fleet_admin only; idempotent; audited)
+      parameters: [{ $ref: '#/components/parameters/UuidId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '200': { description: approved, content: { application/json: { schema: { $ref: '#/components/schemas/AgentAction' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /v1/agent/actions/{id}/reject:
+    post:
+      tags: [Agent]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { reason: { type: string, maxLength: 500 } } } } }
+      responses:
+        '200': { description: rejected, content: { application/json: { schema: { $ref: '#/components/schemas/AgentAction' } } } }
+  /v1/mappings:
+    get:
+      tags: [Platform]
+      summary: OEM mapping versions and status
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/MappingSummary' } } } } }
+    post:
+      tags: [Platform]
+      summary: Create a DRAFT mapping (validated against the DSL; never executes code)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MappingDraft' } } }
+      responses:
+        '201': { description: created, content: { application/json: { schema: { $ref: '#/components/schemas/MappingSummary' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /v1/mappings/preview:
+    post:
+      tags: [Platform]
+      summary: Dry-run a draft mapping against a sample payload; returns normalised records and per-record failures
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MappingPreviewRequest' } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/MappingPreviewResult' } } } }
+  /v1/mappings/{oem}/versions/{version}/approve:
+    post:
+      tags: [Platform]
+      parameters: [{ $ref: '#/components/parameters/OemCode' }, { $ref: '#/components/parameters/Version' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '200': { description: approved, content: { application/json: { schema: { $ref: '#/components/schemas/MappingSummary' } } } }
+  /v1/mappings/{oem}/versions/{version}/activate:
+    post:
+      tags: [Platform]
+      summary: Activate (publishes to config.mappings.v1; normalizers hot-reload in ~2 s; DLQ replay is offered next)
+      parameters: [{ $ref: '#/components/parameters/OemCode' }, { $ref: '#/components/parameters/Version' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '200': { description: active, content: { application/json: { schema: { $ref: '#/components/schemas/MappingSummary' } } } }
+  /v1/oems/quality:
+    get:
+      tags: [Platform]
+      summary: Per-OEM data quality, drift and software-version fault correlation
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/OemQuality' } } } } }
+  /v1/dlq:
+    get:
+      tags: [Platform]
+      summary: Dead-letter sample (original payload + error reason) for inspection
+      parameters:
+        - { name: oem, in: query, schema: { type: string } }
+        - { name: reason, in: query, schema: { type: string } }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/DlqItem' } } } } }
+  /v1/dlq/replay:
+    post:
+      tags: [Platform]
+      summary: Replay an OEM's DLQ through its (now active) mapping
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [oem], properties: { oem: { type: string }, reason: { type: string }, limit: { type: integer, maximum: 1000000 } } } } }
+      responses:
+        '202': { description: started, content: { application/json: { schema: { type: object, properties: { job_id: { type: string }, records: { type: integer } } } } } }
+  /v1/audit:
+    get:
+      tags: [Compliance]
+      summary: Audit log (tenant-scoped, keyset)
+      parameters:
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { name: actor_id, in: query, schema: { type: string } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: decision, in: query, schema: { type: string, enum: [ALLOW, DENY] } }
+      responses:
+        '200': { description: page, content: { application/json: { schema: { $ref: '#/components/schemas/AuditPage' } } } }
+  /v1/audit/verify:
+    get:
+      tags: [Compliance]
+      summary: Verify the hash chain (calls audit_verify); reports the first broken sequence if tampered
+      parameters:
+        - { name: from_seq, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: to_seq, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/AuditVerify' } } } }
+  /v1/dsr:
+    post:
+      tags: [Compliance]
+      summary: Data-subject request. ERASE = crypto-shredding (destroy the subject data key; replay renders PII unreadable). ACCESS = export.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/DsrCreate' } } }
+      responses:
+        '202': { description: accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Dsr' } } } }
+  /v1/dsr/{id}:
+    get:
+      tags: [Compliance]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Dsr' } } } }
+components:
+  securitySchemes:
+    oidc:
+      type: openIdConnect
+      openIdConnectUrl: http://localhost:8080/realms/fleetsentinel/.well-known/openid-configuration
+  parameters:
+    Cursor: { name: cursor, in: query, description: Opaque keyset cursor from a previous page, schema: { type: string, maxLength: 512 } }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+    FleetId: { name: fleet_id, in: query, schema: { type: string, format: uuid } }
+    Vin: { name: vin, in: path, required: true, schema: { type: string, pattern: '^[A-HJ-NPR-Z0-9]{17}$' } }
+    UuidId: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    OemCode: { name: oem, in: path, required: true, schema: { type: string, pattern: '^OEM_[A-Z]$' } }
+    Version: { name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    Purpose: { name: X-Purpose, in: header, schema: { type: string, enum: [OPERATIONS, RECOVERY, SAFETY_REVIEW, COMPLIANCE], default: OPERATIONS } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8, maxLength: 128 } }
+  responses:
+    Problem:
+      description: RFC 9457 problem details (401, 403, 404, 409, 422, 429, 503 ...)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        trace_id: { type: string }
+    Severity: { type: string, enum: [INFO, WARNING, CRITICAL] }
+    AlertStatus: { type: string, enum: [open, ack, resolved] }
+    RuleCode:
+      type: string
+      enum: [TOW, CRASH, GEOFENCE_BREACH, CRITICAL_DTC, LOW_SOC_STRANDING, GOING_DARK, EXCESSIVE_IDLING, HARSH_DRIVING, MAINTENANCE_RISK, UNAPPROVED_DEPOT_CLUSTER, ODOMETER_ROLLBACK, SCHEMA_DRIFT]
+    VehicleStatus: { type: string, enum: [PARKED, DRIVING, IDLING, CHARGING, OFFLINE, TOWED] }
+    Powertrain: { type: string, enum: [ICE, EV, HYBRID] }
+    Page:
+      type: object
+      required: [items]
+      properties:
+        next_cursor: { type: [string, 'null'], description: null on the last page }
+    Me:
+      type: object
+      required: [sub, tenant_id, roles]
+      properties:
+        sub: { type: string }
+        tenant_id: { type: string, format: uuid }
+        tenant_name: { type: string }
+        roles: { type: array, items: { type: string } }
+        email: { type: string }
+    FleetSummary:
+      type: object
+      required: [vehicles_total, vehicles_by_status, leaking_usd_today, savings_opportunity_usd_week, at_risk_vehicles, open_critical_alerts, freshness_p95_ms, as_of]
+      properties:
+        vehicles_total: { type: integer }
+        vehicles_by_status: { type: object, additionalProperties: { type: integer } }
+        leaking_usd_today: { type: number }
+        savings_opportunity_usd_week: { type: number, description: idling above the peer-p25 benchmark, priced at the tenant tariff }
+        at_risk_vehicles: { type: integer, description: 'p_failure_7d above the cost-optimal threshold' }
+        open_critical_alerts: { type: integer }
+        freshness_p95_ms: { type: integer, description: measured ingest-to-serve latency (bulk lane) }
+        model_fallback_active: { type: boolean }
+        as_of: { type: string, format: date-time }
+    Vehicle:
+      type: object
+      required: [vin, powertrain, model, oem, fleet_id]
+      properties:
+        vin: { type: string }
+        fleet_id: { type: string, format: uuid }
+        oem: { type: string }
+        model: { type: string }
+        powertrain: { $ref: '#/components/schemas/Powertrain' }
+        status: { $ref: '#/components/schemas/VehicleStatus' }
+        last_risk_score: { type: number, minimum: 0, maximum: 1 }
+        open_alerts: { type: integer }
+        lat: { type: number }
+        lon: { type: number }
+        last_seen: { type: string, format: date-time }
+    VehiclePage: { allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Vehicle' } } } }] }
+    Vehicle360:
+      type: object
+      required: [vehicle]
+      properties:
+        vehicle: { $ref: '#/components/schemas/Vehicle' }
+        twin: { type: object, additionalProperties: true, description: 'Mongo digital-twin document; shape varies by powertrain/OEM (battery block for EV, fuel block for ICE, OEM extras)' }
+        risk: { $ref: '#/components/schemas/RiskDetail' }
+        recent_alerts: { type: array, items: { $ref: '#/components/schemas/Alert' } }
+        recent_trips: { type: array, items: { $ref: '#/components/schemas/Trip' } }
+        location_precision: { type: string, enum: [exact, geohash7, geohash6, geohash5], description: 'role/purpose-dependent' }
+    Trip:
+      type: object
+      required: [id, start_ts, end_ts, distance_km]
+      properties:
+        id: { type: string, format: uuid }
+        start_ts: { type: string, format: date-time }
+        end_ts: { type: string, format: date-time }
+        distance_km: { type: number }
+        idle_s: { type: integer }
+        energy_used: { type: number }
+        energy_cost: { type: number }
+        harsh_brake_count: { type: integer }
+        harsh_accel_count: { type: integer }
+        driver_ref: { type: string, description: 'pseudonymous driver token (never plaintext identity)' }
+    TripPage: { allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Trip' } } } }] }
+    RiskDetail:
+      type: object
+      required: [p_failure_7d, model_version, recommendation]
+      properties:
+        p_failure_7d: { type: number, minimum: 0, maximum: 1 }
+        model_version: { type: string }
+        fallback: { type: boolean, description: true when the rule baseline produced the score }
+        reason_codes:
+          type: array
+          items:
+            type: object
+            required: [feature, contribution]
+            properties: { feature: { type: string }, contribution: { type: number }, human: { type: string } }
+        expected_value_usd: { type: number, description: 'p * C_breakdown - C_inspection' }
+        recommendation: { type: string, enum: [INSPECT, MONITOR, NONE] }
+        predicted_at: { type: string, format: date-time }
+    Lookalike:
+      type: object
+      required: [vin, similarity]
+      properties:
+        vin: { type: string }
+        similarity: { type: number }
+        failed_within_7d: { type: [boolean, 'null'] }
+        note: { type: string }
+    MapViewport:
+      type: object
+      properties:
+        mode: { type: string, enum: [points, cells] }
+        points: { type: array, items: { type: object, properties: { vin: { type: string }, lat: { type: number }, lon: { type: number }, status: { $ref: '#/components/schemas/VehicleStatus' } } } }
+        cells: { type: array, items: { type: object, properties: { geohash: { type: string }, count: { type: integer }, idle: { type: integer } } } }
+        truncated: { type: boolean }
+    Alert:
+      type: object
+      required: [id, vin, rule, severity, status, opened_at]
+      properties:
+        id: { type: string, format: uuid }
+        vin: { type: string }
+        rule: { $ref: '#/components/schemas/RuleCode' }
+        severity: { $ref: '#/components/schemas/Severity' }
+        status: { $ref: '#/components/schemas/AlertStatus' }
+        occurrences: { type: integer }
+        summary: { type: string }
+        details: { type: object, additionalProperties: true }
+        impact_usd: { type: number }
+        opened_at: { type: string, format: date-time }
+        event_ts: { type: string, format: date-time }
+        detected_ts: { type: string, format: date-time }
+        latency_ms: { type: integer, description: detected - ingest, for the < 5 s SLO }
+        lat: { type: number }
+        lon: { type: number }
+        trace_id: { type: string, description: 'open in Tempo: single trace from ingest to screen' }
+    AlertPage: { allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Alert' } } } }] }
+    Driver:
+      type: object
+      required: [id, safety_score, confidence]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: [string, 'null'], description: null when the role may not see identity or the subject was erased }
+        erased: { type: boolean }
+        safety_score: { type: number, minimum: 0, maximum: 100 }
+        confidence: { type: string, enum: [low, ok], description: 'low = insufficient exposure (km)' }
+        km_30d: { type: number }
+    DriverPage: { allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Driver' } } } }] }
+    DriverDetail:
+      allOf:
+        - $ref: '#/components/schemas/Driver'
+        - type: object
+          properties:
+            per_100km:
+              type: object
+              properties: { harsh_brake: { type: number }, harsh_accel: { type: number }, overspeed_min: { type: number }, night_share: { type: number }, idle_share: { type: number } }
+            coaching:
+              type: array
+              description: top levers as peer-percentile deltas
+              items:
+                type: object
+                properties: { lever: { type: string }, value: { type: number }, fleet_p50: { type: number }, message: { type: string } }
+    CostReport:
+      type: object
+      properties:
+        currency: { type: string, default: USD }
+        total_cost: { type: number }
+        idle_cost: { type: number }
+        savings_opportunity: { type: number }
+        series: { type: array, items: { type: object, properties: { key: { type: string }, energy_cost: { type: number }, idle_cost: { type: number }, distance_km: { type: number } } } }
+    BatchReportRequest:
+      type: object
+      required: [report_id]
+      properties:
+        report_id: { type: string, enum: [fuel_idle_by_depot, risk_by_sw_version, utilization_by_hour, carbon_by_fleet] }
+        params: { type: object, additionalProperties: true }
+    BatchReportResult:
+      type: object
+      properties:
+        report_id: { type: string }
+        rows_scanned: { type: integer, description: 'shows the billion-row scan' }
+        elapsed_ms: { type: integer }
+        columns: { type: array, items: { type: string } }
+        rows: { type: array, items: { type: array, items: {} } }
+    InsightExport:
+      type: object
+      properties:
+        k_anonymity: { type: integer, const: 10 }
+        location_precision: { type: string, const: geohash5 }
+        cells: { type: array, items: { type: object, properties: { geohash: { type: string }, vehicles_approx: { type: integer }, idle_hours: { type: number }, harsh_events: { type: integer } } } }
+        suppressed_cells: { type: integer, description: cells dropped for having fewer than k distinct vehicles }
+        totals: { type: object, additionalProperties: { type: number } }
+    AgentChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1, maxLength: 2000 }
+        conversation_id: { type: string, format: uuid }
+    AgentAnswer:
+      type: object
+      required: [answer, grounded]
+      properties:
+        conversation_id: { type: string, format: uuid }
+        answer: { type: string }
+        grounded: { type: boolean, description: 'every number in `answer` appears in a tool result of this turn' }
+        tool_calls: { type: array, items: { type: object, properties: { tool: { type: string }, args: { type: object, additionalProperties: true }, result_hash: { type: string } } } }
+        proposed_actions: { type: array, items: { $ref: '#/components/schemas/AgentAction' } }
+        degraded: { type: boolean, description: true if retries were exhausted and a templated answer was returned }
+    Briefing:
+      type: object
+      properties:
+        generated_at: { type: string, format: date-time }
+        source: { type: string, enum: [llm, rules] }
+        headline: { type: string, examples: ['5 actions could save $18,400 this week'] }
+        total_impact_usd: { type: number }
+        items:
+          type: array
+          items:
+            type: object
+            properties: { rank: { type: integer }, kind: { type: string, enum: [cost, maintenance, safety, ops] }, title: { type: string }, detail: { type: string }, impact_usd: { type: number }, action: { $ref: '#/components/schemas/AgentAction' } }
+    AgentAction:
+      type: object
+      required: [id, status, proposal]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, approved, rejected] }
+        proposal: { type: object, additionalProperties: true, description: 'e.g. {type:"schedule_service", vin:"...", by:"2026-10-02"}' }
+        rationale: { type: string }
+        expected_impact_usd: { type: number }
+        created_at: { type: string, format: date-time }
+        decided_at: { type: [string, 'null'], format: date-time }
+        work_order_id: { type: [string, 'null'], format: uuid }
+    ActionProposalCreate:
+      type: object
+      required: [proposal, rationale]
+      properties:
+        alert_id: { type: string, format: uuid }
+        proposal: { type: object, additionalProperties: true }
+        rationale: { type: string, maxLength: 1000 }
+        expected_impact_usd: { type: number, minimum: 0 }
+    ActionPage: { allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/AgentAction' } } } }] }
+    MappingSummary:
+      type: object
+      properties:
+        oem: { type: string }
+        version: { type: integer }
+        status: { type: string, enum: [draft, approved, active, retired] }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        activated_at: { type: [string, 'null'], format: date-time }
+    MappingDraft:
+      type: object
+      required: [oem, document]
+      properties:
+        oem: { type: string }
+        document: { type: object, additionalProperties: true, description: 'see contracts/mappings/README.md' }
+        source: { type: string, enum: [human, copilot] }
+    MappingPreviewRequest:
+      type: object
+      required: [document, sample]
+      properties:
+        document: { type: object, additionalProperties: true }
+        sample: { description: 'raw batch payload (JSON)', type: [object, array, string] }
+    MappingPreviewResult:
+      type: object
+      properties:
+        ok: { type: array, items: { type: object, additionalProperties: true } }
+        failed: { type: array, items: { type: object, properties: { reason: { type: string }, detail: { type: string }, raw: {} } } }
+    OemQuality:
+      type: object
+      properties:
+        oem: { type: string }
+        active_mapping_version: { type: [integer, 'null'] }
+        records_1h: { type: integer }
+        failure_rate_1h: { type: number }
+        drift_suspected: { type: boolean }
+        drift_detail: { type: string }
+        quality_score: { type: number, minimum: 0, maximum: 100 }
+        fault_rate_by_sw_version: { type: array, items: { type: object, properties: { sw_version: { type: string }, vehicles: { type: integer }, dtc_per_1000km: { type: number } } } }
+    DlqItem:
+      type: object
+      properties:
+        oem: { type: string }
+        error_reason: { type: string }
+        ts: { type: string, format: date-time }
+        payload: { description: original record, sanitised }
+    AuditEntry:
+      type: object
+      properties:
+        seq: { type: integer }
+        ts: { type: string, format: date-time }
+        actor_id: { type: string }
+        actor_type: { type: string }
+        action: { type: string }
+        resource_type: { type: string }
+        resource_ids: { type: array, items: { type: string } }
+        purpose: { type: string }
+        decision: { type: string, enum: [ALLOW, DENY] }
+        reason: { type: string }
+        hash: { type: string, description: 'hex of the chained sha256' }
+    AuditPage: { allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } } } }] }
+    AuditVerify:
+      type: object
+      required: [ok, checked]
+      properties:
+        ok: { type: boolean }
+        checked: { type: integer }
+        first_bad_seq: { type: [integer, 'null'] }
+        head_hash: { type: string }
+        anchored_day: { type: [string, 'null'], format: date }
+    DsrCreate:
+      type: object
+      required: [driver_id, kind]
+      properties:
+        driver_id: { type: string, format: uuid }
+        kind: { type: string, enum: [ERASE, ACCESS] }
+    Dsr:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [ERASE, ACCESS] }
+        status: { type: string, enum: [received, verified, completed, rejected] }
+        requested_at: { type: string, format: date-time }
+        completed_at: { type: [string, 'null'], format: date-time }
+        evidence:
+          type: object
+          additionalProperties: true
+          description: 'ERASE: key destroyed_at, rows nulled per store, replay check result (PII unreadable), audit entry seq'

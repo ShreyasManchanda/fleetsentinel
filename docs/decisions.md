@@ -1,0 +1,14 @@
+# Decision log (implementation-time decisions; the 5 formal ADRs are in docs/adr/)
+
+These refine spec.md v3 where implementation reality demanded it. Newest last.
+
+| Date | Decision | Why | Impact |
+|---|---|---|---|
+| 2026-09-28 | Ordered SQL migrations run by `tools/fs.py migrate` (with `-- @@` statement splitting) instead of Alembic | Timescale continuous aggregates cannot be created inside a transaction; Alembic's transactional DDL fights that. SQL files are also the reviewable artifact for the SQL write-up. | `db/migrations/*.sql`. `migrate --to 5` captures the "before" plans, a full migrate applies 0006 perf. |
+| 2026-09-28 | OEM clouds push critical events on a **separate MQTT channel** (`event/{oem}/{shard}`) -> `ingest.priority.v1` -> own normalizer group -> **`telemetry.priority.v1`** -> priority processor | Removes per-record payload scanning at the gateway and gives the fast lane a topic that a bulk backlog cannot delay. Mirrors real OEM push APIs (event notifications vs periodic telemetry). | New topic `telemetry.priority.v1`. Priority guarantee = OEM-flagged critical events + lender **watchlist** telemetry. Geofence/low-SoC on non-watchlist vehicles run inline in the bulk lane (steady-state ~1-2 s, delayed only under backlog). `priority_selector` removed from the mapping DSL. |
+| 2026-09-28 | Crypto-shredding uses a **per-subject data key (DEK) wrapped by one Vault Transit KEK**, stored in `subject_key`, not one Transit key per subject | Seeding 120k drivers with one Transit key each is ~240k Vault calls. Batch-wrapping DEKs is ~120 calls. Erasure semantics are identical: destroy the wrapped DEK and every ciphertext copy is unreadable. | `subject_key` table (0001); `driver.subject_key_id` FK; AES-256-GCM helper `fscore.crypto` (stream C). |
+| 2026-09-28 | GOING_DARK is evaluated in **event time** (partition watermark minus last_seen), not wall clock | Wall-clock last-seen would fire false GOING_DARK alerts for every vehicle during a consumer backlog. | Timing wheel driven by the watermark (stream B). |
+| 2026-09-28 | Mapping-engine baseline measured at ~11k records/s/core on a loaded laptop | 100k/s needs ~9 cores at that rate. | Stream B owns a batch-vectorised fast path (target >= 40k rec/s/core) and reports the measured number honestly. |
+| 2026-09-28 | Money is USD everywhere; tariffs are USD-equivalent | Avoids currency-conversion noise; `tenant.currency` is display-only. | Sources are cited in the Solution Document. |
+| 2026-09-28 | Windows dev machines have no `make`: `python tools/fs.py <cmd>` is canonical and the Makefile delegates | Team machine is Windows 11. | README documents both. |
+| 2026-09-28 | The local machine has 13.9 GB RAM (often < 1 GB free). Load and chaos evidence is produced on the cloud VM | The full stack plus a 100k/s simulator does not fit locally. | The live Terraform stack (spec 17.3) is on the critical path for the NFR evidence. |

@@ -1,0 +1,73 @@
+# Kafka topic registry. Single source of truth: tools/fs.py `topics` creates these; services read names from fscore.contracts.
+# Partition headroom is provisioned up front (ADR-02): adding partitions later remaps keys and breaks per-VIN ordering.
+# `ha` profile overrides replication_factor to 3 (min.insync.replicas 2); the default single-node profile uses 1.
+
+headers:            # Kafka record headers used across services
+  - oem             # OEM code for raw records
+  - batch_id        # connector-assigned batch id (dedup at gateway)
+  - received_ts_ms  # gateway receive time
+  - traceparent     # W3C trace context
+  - error_reason    # DLQ only: MAPPING_MISSING | VALIDATION_FAILED | CLOCK_SKEW | ...
+  - mapping_version # DLQ / normalized: mapping version applied
+
+topics:
+  ingest.raw.v1:
+    key: "oem:shard"
+    partitions: 64
+    retention_ms: 259200000        # 3 days
+    format: raw-bytes              # OEM payload bytes, untouched
+    compression: zstd
+  ingest.priority.v1:
+    key: "oem:shard"
+    partitions: 12
+    retention_ms: 259200000
+    format: raw-bytes              # OEM-pushed critical events + lender watchlist telemetry (MQTT event/{oem}/{shard})
+    compression: zstd
+  telemetry.normalized.v1:
+    key: vin
+    partitions: 64
+    retention_ms: 604800000        # 7 days
+    format: protobuf               # fleetsentinel.v1.TelemetryEvent
+    compression: zstd
+  telemetry.priority.v1:
+    key: vin
+    partitions: 12
+    retention_ms: 259200000
+    format: protobuf               # fleetsentinel.v1.TelemetryEvent, normalized by normalizer-priority; tiny volume, never behind bulk
+    compression: zstd
+  vehicle.state.v1:
+    key: vin
+    partitions: 64
+    cleanup_policy: compact
+    format: protobuf               # fleetsentinel.v1.VehicleState
+  alerts.v1:
+    key: vin
+    partitions: 12
+    retention_ms: 2592000000       # 30 days
+    format: protobuf               # fleetsentinel.v1.Alert
+  audit.events.v1:
+    key: tenant_id
+    partitions: 12
+    retention_ms: 2592000000
+    format: protobuf               # fleetsentinel.v1.AuditEvent
+  dlq.ingest.v1:
+    key: oem
+    partitions: 6
+    retention_ms: 1209600000       # 14 days
+    format: raw-bytes              # original payload + error_reason header
+  config.mappings.v1:
+    key: oem
+    partitions: 1
+    cleanup_policy: compact
+    format: json                   # active OEM mapping documents (see contracts/mappings/README.md)
+
+consumer_groups:
+  normalizer: [ingest.raw.v1]
+  normalizer-priority: [ingest.priority.v1]            # own instances: bulk lag can never delay the fast lane
+  processor-bulk: [telemetry.normalized.v1]
+  processor-priority: [telemetry.priority.v1]
+  processor-priority-dark: [telemetry.normalized.v1]   # optional: feeds the going-dark timing wheel with event-time watermarks
+  lake-sink: [telemetry.normalized.v1]
+  alert-sink: [alerts.v1]
+  state-sink: [vehicle.state.v1]
+  audit-sink: [audit.events.v1]

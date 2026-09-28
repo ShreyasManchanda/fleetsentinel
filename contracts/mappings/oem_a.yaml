@@ -1,0 +1,34 @@
+oem: OEM_A
+version: 1
+envelope:
+  records: "$.records[*]"
+  batch_id: "$.batch"
+fields:
+  vin:        { path: "$.vehicle.vin", transform: [strip, upper, validate_vin] }
+  ts_ms:      { path: "$.ts", transform: [iso8601_to_ms] }
+  seq:        { path: "$.seq", transform: [to_int], default: 0 }
+  lat:        { path: "$.telemetry.pos.lat", transform: [to_float] }
+  lon:        { path: "$.telemetry.pos.lng", transform: [to_float] }
+  speed_kmh:  { path: "$.telemetry.kph", transform: [to_float, clamp: [0, 350]] }
+  odo_km:     { path: "$.telemetry.odo_km", transform: [to_float] }
+  ignition:   { path: "$.telemetry.ign", transform: [to_bool] }
+  soc_pct:    { path: "$.battery.soc", transform: [to_float, clamp: [0, 100]] }
+  soh_pct:    { path: "$.battery.soh", transform: [to_float, clamp: [0, 100]] }
+  dtc:        { path: "$.diag.dtc", transform: [validate_dtc] }
+  sw_version: { path: "$.vehicle.sw" }
+  driver_ref: { path: "$.driver" }
+  evt:
+    path: "$.event"
+    transform:
+      - enum_map:
+          HARSH_BRAKE: HARSH_BRAKE
+          HARSH_ACCEL: HARSH_ACCEL
+          IGN_ON: IGNITION_ON
+          IGN_OFF: IGNITION_OFF
+          TOWED: TOW
+          CRASH_DETECTED: CRASH
+          CHG_START: CHARGING_START
+          CHG_END: CHARGING_END
+          DTC: DTC_SET
+          OVERSPEED: OVERSPEED
+drop_unmapped: true

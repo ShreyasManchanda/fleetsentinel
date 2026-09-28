@@ -1,0 +1,189 @@
+# FleetSentinel local stack.  `python tools/fs.py up`  (or `make up`)
+# Profiles:  infra (default; datastores + broker + IdP + vault)  |  apps (services)  |  obs (Prometheus/Loki/Tempo/Grafana)  |  ha (3-node Redpanda)
+# Memory budget (infra profile): ~4.5 GB. Docker Desktop on Windows: give WSL >= 8 GB (.wslconfig) if you also run `apps`.
+# Dev credentials below are DEV-ONLY defaults, overridable via deploy/compose/.env (see .env.example). Never reuse in production.
+
+name: fleetsentinel
+
+x-healthy: &restart
+  restart: unless-stopped
+
+services:
+  # ------------------------------------------------------------------ event backbone
+  redpanda:
+    <<: *restart
+    image: ${REDPANDA_IMAGE:-docker.redpanda.com/redpandadata/redpanda:v24.3.9}
+    profiles: [infra]
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=2
+      - --memory=1536M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --schema-registry-addr=internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+    ports: ["19092:19092", "18081:18081"]
+    volumes: ["redpanda-data:/var/lib/redpanda/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # ------------------------------------------------------------------ MQTT edge (mTLS, per-OEM topic ACLs)
+  mosquitto:
+    <<: *restart
+    image: eclipse-mosquitto:2
+    profiles: [infra]
+    ports: ["8883:8883"]
+    volumes:
+      - ../mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../mosquitto/acl:/mosquitto/config/acl:ro
+      - ../certs:/mosquitto/certs:ro
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -p 8883 --cafile /mosquitto/certs/ca.crt --cert /mosquitto/certs/gateway.crt --key /mosquitto/certs/gateway.key -t '$$SYS/broker/uptime' -C 1 -W 3 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------ stores
+  postgres:
+    <<: *restart
+    image: ${POSTGRES_IMAGE:-timescale/timescaledb-ha:pg17}
+    profiles: [infra]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: fleetsentinel
+    command: ["postgres", "-c", "shared_buffers=512MB", "-c", "max_connections=300", "-c", "work_mem=16MB",
+              "-c", "timescaledb.max_background_workers=8", "-c", "max_worker_processes=24"]
+    ports: ["5432:5432"]
+    shm_size: 512mb
+    volumes: ["pg-data:/home/postgres/pgdata/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fleetsentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mongo:
+    <<: *restart
+    image: ${MONGO_IMAGE:-mongo:8}
+    profiles: [infra]
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.5"]
+    ports: ["27017:27017"]
+    volumes: ["mongo-data:/data/db"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ping:1}).ok' | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    <<: *restart
+    image: redis:7-alpine
+    profiles: [infra]
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--save", "", "--maxmemory", "768mb", "--maxmemory-policy", "noeviction"]
+    ports: ["6379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    <<: *restart
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    profiles: [infra]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: ${MINIO_MC_IMAGE:-minio/mc:latest}
+    profiles: [infra]
+    depends_on:
+      minio: { condition: service_healthy }
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}
+        mc mb --ignore-existing local/fleetsentinel-lake
+        # WORM (object-lock) bucket for the daily audit-chain anchor: tamper-evident, cannot be overwritten during retention
+        mc mb --ignore-existing --with-lock local/fleetsentinel-audit-anchor
+        mc retention set --default COMPLIANCE 1d local/fleetsentinel-audit-anchor || true
+        # tiering as configured for the cost model: lake expires raw partitions after 400 days (13 months)
+        mc ilm rule add --expire-days 400 local/fleetsentinel-lake || true
+
+  # ------------------------------------------------------------------ identity + secrets
+  keycloak:
+    <<: *restart
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.0}
+    profiles: [infra]
+    command: ["start-dev", "--import-realm", "--http-port=8080", "--health-enabled=true"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      JAVA_OPTS_KC_HEAP: "-Xms256m -Xmx768m"
+    ports: ["8080:8080"]
+    volumes: ["../keycloak/realm-fleetsentinel.json:/opt/keycloak/data/import/realm-fleetsentinel.json:ro"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  vault:
+    <<: *restart
+    image: ${VAULT_IMAGE:-hashicorp/vault:1.18}
+    profiles: [infra]
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN:-root}
+    cap_add: [IPC_LOCK]
+    ports: ["8200:8200"]
+    healthcheck:
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 vault status >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  vault-init:
+    image: ${VAULT_IMAGE:-hashicorp/vault:1.18}
+    profiles: [infra]
+    depends_on:
+      vault: { condition: service_healthy }
+    restart: "no"
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN:-root}
+    volumes: ["../vault/init.sh:/init.sh:ro"]
+    entrypoint: ["/bin/sh", "/init.sh"]
+
+  # ------------------------------------------------------------------ HA profile: replaces the single Redpanda with 3 brokers (RF=3)
+  # Usage: FS_PROFILES=ha docker compose ... up   (do not combine with `infra`'s redpanda). Owned by the DevOps stream.
+  # redpanda-1/2/3 are defined in docker-compose.ha.yml to keep this file readable.
+
+volumes:
+  redpanda-data:
+  mosquitto-data:
+  pg-data:
+  mongo-data:
+  redis-data:
+  minio-data:

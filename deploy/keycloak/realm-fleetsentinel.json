@@ -1,0 +1,612 @@
+{
+  "realm": "fleetsentinel",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 28800,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "platform_admin",
+        "description": "FleetSentinel platform_admin"
+      },
+      {
+        "name": "fleet_admin",
+        "description": "FleetSentinel fleet_admin"
+      },
+      {
+        "name": "analyst",
+        "description": "FleetSentinel analyst"
+      },
+      {
+        "name": "viewer",
+        "description": "FleetSentinel viewer"
+      },
+      {
+        "name": "lender_agent",
+        "description": "FleetSentinel lender_agent"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fs-web",
+      "name": "FleetSentinel Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8088/*",
+        "https://*/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "aud-fs-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "fs-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "fs-api",
+      "name": "FleetSentinel API",
+      "enabled": true,
+      "bearerOnly": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@apex-logistics.demo",
+      "email": "admin@apex-logistics.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "fleet_admin"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "a1968e1a-1866-53ab-ada0-79dde61e800d"
+        ]
+      }
+    },
+    {
+      "username": "analyst@apex-logistics.demo",
+      "email": "analyst@apex-logistics.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Analyst",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "a1968e1a-1866-53ab-ada0-79dde61e800d"
+        ]
+      }
+    },
+    {
+      "username": "viewer@apex-logistics.demo",
+      "email": "viewer@apex-logistics.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Viewer",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "a1968e1a-1866-53ab-ada0-79dde61e800d"
+        ]
+      }
+    },
+    {
+      "username": "briefing-bot@apex-logistics.demo",
+      "email": "briefing-bot@apex-logistics.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Briefing Bot",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "a1968e1a-1866-53ab-ada0-79dde61e800d"
+        ]
+      }
+    },
+    {
+      "username": "admin@coastal-rentals.demo",
+      "email": "admin@coastal-rentals.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "fleet_admin"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "8327a9f3-8256-596e-9304-7f4b707e9654"
+        ]
+      }
+    },
+    {
+      "username": "analyst@coastal-rentals.demo",
+      "email": "analyst@coastal-rentals.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Analyst",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "8327a9f3-8256-596e-9304-7f4b707e9654"
+        ]
+      }
+    },
+    {
+      "username": "viewer@coastal-rentals.demo",
+      "email": "viewer@coastal-rentals.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Viewer",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "8327a9f3-8256-596e-9304-7f4b707e9654"
+        ]
+      }
+    },
+    {
+      "username": "briefing-bot@coastal-rentals.demo",
+      "email": "briefing-bot@coastal-rentals.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Briefing Bot",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "8327a9f3-8256-596e-9304-7f4b707e9654"
+        ]
+      }
+    },
+    {
+      "username": "admin@metro-cabs-ev.demo",
+      "email": "admin@metro-cabs-ev.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "fleet_admin"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "b29de121-b8ca-5828-98d9-683894d1de5c"
+        ]
+      }
+    },
+    {
+      "username": "analyst@metro-cabs-ev.demo",
+      "email": "analyst@metro-cabs-ev.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Analyst",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "b29de121-b8ca-5828-98d9-683894d1de5c"
+        ]
+      }
+    },
+    {
+      "username": "viewer@metro-cabs-ev.demo",
+      "email": "viewer@metro-cabs-ev.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Viewer",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "b29de121-b8ca-5828-98d9-683894d1de5c"
+        ]
+      }
+    },
+    {
+      "username": "briefing-bot@metro-cabs-ev.demo",
+      "email": "briefing-bot@metro-cabs-ev.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Briefing Bot",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "b29de121-b8ca-5828-98d9-683894d1de5c"
+        ]
+      }
+    },
+    {
+      "username": "admin@kestrel-finance.demo",
+      "email": "admin@kestrel-finance.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "fleet_admin"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "99b01423-8399-53d2-9030-ec4622aa1614"
+        ]
+      }
+    },
+    {
+      "username": "analyst@kestrel-finance.demo",
+      "email": "analyst@kestrel-finance.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Analyst",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "99b01423-8399-53d2-9030-ec4622aa1614"
+        ]
+      }
+    },
+    {
+      "username": "viewer@kestrel-finance.demo",
+      "email": "viewer@kestrel-finance.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Viewer",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "99b01423-8399-53d2-9030-ec4622aa1614"
+        ]
+      }
+    },
+    {
+      "username": "briefing-bot@kestrel-finance.demo",
+      "email": "briefing-bot@kestrel-finance.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Briefing Bot",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "99b01423-8399-53d2-9030-ec4622aa1614"
+        ]
+      }
+    },
+    {
+      "username": "lender@kestrel-finance.demo",
+      "email": "lender@kestrel-finance.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Lender",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "lender_agent"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "99b01423-8399-53d2-9030-ec4622aa1614"
+        ]
+      }
+    },
+    {
+      "username": "admin@nimbus-transit.demo",
+      "email": "admin@nimbus-transit.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "fleet_admin"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "9a38d8f9-b14c-5631-944e-3de48854392b"
+        ]
+      }
+    },
+    {
+      "username": "analyst@nimbus-transit.demo",
+      "email": "analyst@nimbus-transit.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Analyst",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "9a38d8f9-b14c-5631-944e-3de48854392b"
+        ]
+      }
+    },
+    {
+      "username": "viewer@nimbus-transit.demo",
+      "email": "viewer@nimbus-transit.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Viewer",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "9a38d8f9-b14c-5631-944e-3de48854392b"
+        ]
+      }
+    },
+    {
+      "username": "briefing-bot@nimbus-transit.demo",
+      "email": "briefing-bot@nimbus-transit.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Briefing Bot",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "9a38d8f9-b14c-5631-944e-3de48854392b"
+        ]
+      }
+    },
+    {
+      "username": "platform@fleetsentinel.demo",
+      "email": "platform@fleetsentinel.demo",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Platform",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "platform_admin"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "a1968e1a-1866-53ab-ada0-79dde61e800d"
+        ]
+      }
+    }
+  ]
+}

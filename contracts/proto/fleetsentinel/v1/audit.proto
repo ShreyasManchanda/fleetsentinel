@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package fleetsentinel.v1;
+
+// Topic: audit.events.v1 (key = tenant_id). One event per API request and per agent step.
+// The hash chain is computed by the audit sink at write time (prev_hash || canonical_row); it is NOT in this event.
+
+enum ActorType {
+  ACTOR_TYPE_UNSPECIFIED = 0;
+  USER = 1;
+  SERVICE = 2;
+  AGENT = 3;
+  SYSTEM = 4;
+}
+
+enum Decision {
+  DECISION_UNSPECIFIED = 0;
+  ALLOW = 1;
+  DENY = 2;
+}
+
+message AuditEvent {
+  string event_id = 1;             // uuid v7 / unique
+  int64 ts_ms = 2;
+  string tenant_id = 3;
+  string actor_id = 4;             // keycloak sub, service client id, or agent run id
+  ActorType actor_type = 5;
+  string action = 6;               // e.g. "GET /v1/vehicles/{vin}", "agent.tool_call", "dsr.erase"
+  string resource_type = 7;        // vehicle | alert | driver | trip | agent_action | mapping | ...
+  repeated string resource_ids = 8;
+  string purpose = 9;              // e.g. OPERATIONS, RECOVERY, SAFETY_REVIEW, COMPLIANCE
+  Decision decision = 10;
+  string reason = 11;              // deny reason or agent step description
+  uint32 latency_ms = 12;
+  map<string, string> attributes = 13; // extra facts (tool name, args hash, result hash, ...)
+}

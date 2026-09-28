@@ -1,0 +1,8 @@
+# Cert CN = username. OEM connectors publish only under their own prefix; the gateway only reads.
+# (Mosquitto evaluates ACLs on the underlying topic for shared subscriptions "$share/<group>/telemetry/#".)
+pattern write telemetry/%u/#
+pattern write event/%u/#
+
+user gateway
+topic read telemetry/#
+topic read event/#

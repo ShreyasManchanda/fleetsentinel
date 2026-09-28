@@ -1,0 +1,4 @@
+{"batch":"a-000123","sent":"2026-09-28T10:15:02.500Z","records":[
+ {"vehicle":{"vin":"1HGCM82633A004352","sw":"4.2.1"},"ts":"2026-09-28T10:15:02.120Z","seq":88412,"telemetry":{"pos":{"lat":12.9716,"lng":77.5946},"kph":64.2,"odo_km":18234.7,"ign":true},"battery":{"soc":41.0,"soh":96.5},"diag":{"dtc":["P0301"]},"event":"HARSH_BRAKE","driver":"drv_8f21"},
+ {"vehicle":{"vin":"1HGCM82633A004352","sw":"4.2.1"},"ts":"2026-09-28T10:15:03.120Z","seq":88413,"telemetry":{"pos":{"lat":12.9718,"lng":77.5949},"kph":58.0,"odo_km":18234.8,"ign":true},"battery":{"soc":40.9,"soh":96.5},"diag":{"dtc":[]},"event":null,"driver":"drv_8f21"}
+]}

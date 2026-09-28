@@ -1,0 +1,3 @@
+{"batch_id":"c-5521","events":[
+ {"vin":"1HGCM82633A004352","ts":"2026-09-28T10:15:02.120Z","lat":21.1702,"lon":72.8311,"speed_kmh":64.2,"soc_pct":41,"odo_km":18234.7,"dtc":["P0301"],"evt":"HARSH_BRAKE","seq":88412}
+]}

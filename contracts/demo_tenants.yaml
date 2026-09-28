@@ -1,0 +1,14 @@
+# Deterministic demo tenants. tenant_id = uuid5(NAMESPACE_FS, "tenant|<slug>")  (fscore.contracts.tenant_id).
+# Keycloak users (tools/gen_realm.py) and the simulator seed both read this file, so ids always agree.
+# DEV-ONLY credentials: every demo user has password "Passw0rd!". Never reuse outside the demo realm.
+password: "Passw0rd!"
+total_vehicles: 100000
+generated_tenants: 45            # power-law fleet sizes fill the remaining vehicles
+tenants:
+  - { slug: apex-logistics,  name: "Apex Logistics",  vehicles: 30000, ev_share: 0.15, hybrid_share: 0.05, note: "hot-spot tenant (30% of fleet) - proves VIN keying spreads load" }
+  - { slug: coastal-rentals, name: "Coastal Rentals", vehicles: 12000, ev_share: 0.25, hybrid_share: 0.10 }
+  - { slug: metro-cabs-ev,   name: "Metro Cabs EV",   vehicles: 10000, ev_share: 0.90, hybrid_share: 0.00 }
+  - { slug: kestrel-finance, name: "Kestrel Finance", vehicles: 2000,  ev_share: 0.10, hybrid_share: 0.05, lender: true, watchlist: 500, note: "lender - collateral watchlist on the priority lane" }
+  - { slug: nimbus-transit,  name: "Nimbus Transit",  vehicles: 6000,  ev_share: 0.50, hybrid_share: 0.10 }
+user_roles_per_tenant: [fleet_admin, analyst, viewer]   # admin@, analyst@, viewer@<slug>.demo ; plus briefing-bot@ (analyst) and lender@ (lender_agent) where lender: true
+platform_admin: { tenant: apex-logistics, username: "platform@fleetsentinel.demo" }

@@ -1,0 +1,24 @@
+# NOT registered at startup. Columnar, array-encoded, epoch SECONDS, fractional SoC (0..1), km/h speed.
+# Onboarded live in the demo: drift alert + DLQ -> copilot drafts this -> preview -> approve -> activate -> DLQ replay.
+oem: OEM_D
+version: 1
+envelope:
+  records: "$.rows[*]"
+  columns: "$.cols"
+  batch_id: "$.bid"
+fields:
+  vin:        { path: "$.vin", transform: [strip, upper, validate_vin] }
+  ts_ms:      { path: "$.t", transform: [to_int, epoch_s_to_ms] }
+  lat:        { path: "$.la", transform: [to_float] }
+  lon:        { path: "$.lo", transform: [to_float] }
+  speed_kmh:  { path: "$.spd", transform: [to_float, { clamp: [0, 350] }] }
+  soc_pct:    { path: "$.soc", transform: [to_float, pct_from_fraction, { clamp: [0, 100] }] }
+  soh_pct:    { path: "$.soh", transform: [to_float, pct_from_fraction, { clamp: [0, 100] }] }
+  odo_km:     { path: "$.odo", transform: [to_float] }
+  dtc:        { path: "$.dtc", transform: [split_csv, validate_dtc] }
+  sw_version: { path: "$$.schema" }
+  evt:
+    path: "$.e"
+    transform:
+      - enum_map: { HB: HARSH_BRAKE, HA: HARSH_ACCEL, TOW: TOW, CRASH: CRASH, CHG: CHARGING_START, CHGE: CHARGING_END }
+drop_unmapped: true
