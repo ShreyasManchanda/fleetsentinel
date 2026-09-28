@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-28 16:05 IST** by the integrator.
+> Last updated: **2026-09-28 19:05 IST** by the integrator.
 
 ## Clock
 
@@ -31,10 +31,10 @@
 | Stream | Scope | Owner | Status | Notes |
 |---|---|---|---|---|
 | Phase 0 | contracts, migrations, mapping engine, infra config | integrator | DONE | 72 tests, 100% on vin/dtc/hashing/contracts, 91% mapping engine |
-| A | simulator + seed | unassigned | NOT STARTED | needs OSM route artifact early |
-| B | ingestion + stream processing | unassigned | NOT STARTED | owns the vectorised mapping fast path (>= 40k rec/s/core) |
-| C | API + security | unassigned | NOT STARTED | RLS/BOLA + crypto-shredding tests are the gates |
-| D | intelligence (ML + copilot + batch) | unassigned | NOT STARTED | needs stream A ground truth |
+| A | simulator + seed | agent (lost, see log) | PARTIAL | 33 py files, 59 tests pass; no final report (agent rate-limited). Needs verification vs §6/DoD |
+| B | ingestion + stream processing | agent (lost) + integrator fixes | PARTIAL | gateway (33) + normalizer (14) + algorithms/sketches/crypto/mapping_fast green (165 libs). **processor + lake_sink still skeletons.** 3 test-side bugs fixed by integrator (B-016) |
+| C | API + security | agent (lost, see log) | PARTIAL | 67 py files, 23 tests pass; no final report. RLS/BOLA gates need real-Postgres check (M1) |
+| D | intelligence (ML + copilot + batch) | unassigned | NOT STARTED | waits for stream A ground truth; launch next when A/B/C land (RAM) |
 | E | web | unassigned | NOT STARTED | can start on a mock of `openapi.yaml` |
 | F | DevOps + QA + docs | unassigned | NOT STARTED | Terraform live stack is on the critical path for evidence |
 
@@ -55,20 +55,23 @@
 
 | Blocker / risk | Impact | Status | Next action |
 |---|---|---|---|
-| Local RAM: ~91% committed, ~230 MB free; browser + `opencode` + Traycer dominate | Docker stack and parallel agents will thrash or crash | OPEN, needs user | Ask user to close browser tabs / opencode; run 2-3 agents max; heavy evidence on cloud VM |
+| Local RAM: browser closed -> 71% committed, ~1.5 GB free (was 91% / 230 MB); `opencode` (~2 GB) + Traycer still resident | Docker stack + agents may still thrash | PARTIAL | Max 3 agents at a time; user cannot close opencode right now; heavy evidence on cloud VM |
 | `timescale/timescaledb-ha:pg17` (~2 GB) pull dies with `unexpected EOF` | Cannot test migrations locally | OPEN | Retry when memory is free; fallback = test on cloud VM |
 | Mapping engine ~11k rec/s/core | 100k/s needs ~9 cores of normalization | OPEN (assigned to stream B) | Batch-vectorised fast path, report measured rate |
 | Solution Document template not in the folder | Submission format risk | OPEN, needs user | User to supply; content is pre-structured in spec section 20 |
 | Deadline unconfirmed | Schedule | OPEN, needs user | Confirm date/time and timezone |
-| Docker Desktop hung at first start | Lost ~25 min | RESOLVED | Killed processes + `wsl --shutdown` + restart |
+| Docker Desktop hung at first start | Lost ~25 min | RESOLVED once; engine stopped answering again later | Restart via script; engine start is being retried in the background |
 
 ## Next actions (ordered)
 
 1. ~~Land living docs + `CLAUDE.md` + docs check; commit.~~ Done.
-2. User frees memory; retry the Postgres image pull; run `fs migrate` for real (M1).
-3. Launch streams A, B, C first (two or three agents at a time), then D, E, F.
-4. Daily: update this file, `BUGS.md`, `decisions.md`, `CHAT_LOG.md`; commit.
+2. Get Docker engine up, pull `timescale/timescaledb-ha:pg17`, run `fs migrate` for real (M1). Not blocking streams A-C (they use fakes / --local).
+3. ~~Launch streams A, B, C~~ launched Mon 2026-09-28 afternoon. Launch D and E when two of them land; F (DevOps) last or alongside.
+4. Integrate returned work: run full test suite, ruff, docs_check; record agent-reported bugs/decisions; commit.
+5. Daily: update this file, `BUGS.md`, `decisions.md`, `CHAT_LOG.md`; commit.
 
 ## Change log of this plan
 
 - 2026-09-28: created. Plan derived from spec.md v3 section 24; dates mapped to the Thu 1 Oct 23:00 IST deadline.
+- 2026-09-28: streams A, B, C launched as background agents (3 at a time because of RAM). D, E, F queued.
+- 2026-09-28 19:05 IST: new session (model change). Prior-session agents are gone with no final reports, but their working-tree output survived. Integrator verified: **all 294 tests pass** (tests+libs 165, simulator 59, gateway 33, normalizer 14, api 23) after fixing 3 test-side bugs in gateway (B-016). processor/lake_sink/agent/batch still skeletons, web/ empty. Next: commit this state, then finish processor + lake_sink (stream B remainder) before D/E/F.
