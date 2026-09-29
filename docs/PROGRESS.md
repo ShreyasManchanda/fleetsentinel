@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-29 morning IST** by the integrator (SQL case-1 evidence + STRIDE done; 344 green).
+> Last updated: **2026-09-29 morning IST** by the integrator (stream D launched).
 
 ## Clock
 
@@ -34,7 +34,7 @@
 | A | simulator + seed | agent (lost, see log) | PARTIAL | 33 py files, 59 tests pass; no final report (agent rate-limited). Needs verification vs §6/DoD |
 | B | ingestion + stream processing | dead bg builder (draft) + integrator tests | NEARLY DONE | gateway (33) + normalizer (14) + libs (150+) green. Processor domain+application now covered: 30 new tests (rules, lifecycle, scoring, priority incl. event-time GOING_DARK, bulk incl. checkpoint-restore replay determinism). Lake sink: 6 tests (naming, Parquet, idempotent rewrite). Caught real bug B-023 (BulkRunner offset). Remaining: Kafka/Redis adapter integration (needs broker) |
 | C | API + security | agent (lost, see log) | PARTIAL | 67 py files, 23 tests pass; no final report. RLS/BOLA gates need real-Postgres check (M1) |
-| D | intelligence (ML + copilot + batch) | unassigned | NOT STARTED | waits for stream A ground truth; launch next when A/B/C land (RAM) |
+| D | intelligence (ML + copilot + batch) | agent (bg task, launched) | IN PROGRESS | owns ml/, services/agent, services/batch; briefed on 4-feature RiskScorer contract + non-leaky label reuse + stub-LLM eval harness |
 | E | web | agent (bg task, done) + integrator verified | DONE | 6 screens mock-first vs openapi.yaml, Command Center + deck.gl map; verified: typecheck/lint clean, 15 vitest green, build 7s. Real-API e2e + WebSocket pending stream C |
 | F | DevOps + QA | agent (bg task, launched 23:35) | IN PROGRESS (slice) | Terraform live+reference, STRIDE, Helm chart, k6/chaos/BDD skeletons, cost model. CI edits + live apply stay with integrator |
 
