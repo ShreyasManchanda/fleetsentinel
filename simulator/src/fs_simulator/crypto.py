@@ -82,7 +82,14 @@ class VaultTransitKek:
 
 
 def make_wrapper(local: bool, addr: str | None = None, token: str | None = None) -> KekWrapper:
-    """Vault Transit if reachable, otherwise the clearly labelled local dev KEK (logged as a WARNING)."""
+    """Vault Transit if reachable, otherwise the clearly labelled local dev KEK (logged as a WARNING).
+
+    Fail-closed: the local fallback is used ONLY when ``local=True`` was explicitly requested
+    (``--local`` / ``--dry-run``). A non-local run whose Vault is unreachable raises instead of
+    silently wrapping DEKs under the publicly-known ``LOCAL_DEV_KEK`` — otherwise a later
+    "crypto-shredding" erasure would be theatrics (anyone with the repo + a pre-erasure backup
+    of ``wrapped_dek`` could still unwrap). See B-020.
+    """
     if local:
         log.warning("kek_local_dev", reason="--local", note="wrapping DEKs with the insecure LOCAL dev KEK")
         return LocalDevKek()
@@ -94,7 +101,8 @@ def make_wrapper(local: bool, addr: str | None = None, token: str | None = None)
         if not client.is_authenticated():
             raise ConnectionError("vault not authenticated")
         return VaultTransitKek(client)
-    except Exception as e:  # noqa: BLE001 - any failure means "Vault unreachable": fall back, loudly
-        log.warning("kek_local_dev", reason="vault_unreachable", error=type(e).__name__,
-                    note="FALLING BACK to the insecure LOCAL dev KEK; DEKs are NOT protected by Vault Transit")
-        return LocalDevKek()
+    except Exception as e:  # noqa: BLE001 - any failure means "Vault unreachable": fail closed
+        raise ConnectionError(
+            "Vault Transit unreachable and --local was not passed: refusing to wrap DEKs "
+            f"under the insecure dev KEK ({type(e).__name__}). Pass --local for synthetic-only "
+            "runs, or start Vault.") from e

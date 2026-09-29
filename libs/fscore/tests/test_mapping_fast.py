@@ -55,7 +55,9 @@ def gen_batch(oem: str, rng: random.Random, n: int) -> dict:
             base["diag"]["dtc"] = rng.choice([[], ["P0301"], ["P0300", "P0217"]])
         elif oem == "OEM_B":
             base.update(v=vin, t=ts, la=lat, lo=lon, sp_mph=spd, fl=soc, od_mi=1000 + i * 0.1,
-                        codes=rng.choice(["", "P0301", "P0301,P0171"]), ev=rng.choice(["", "HB", "TW", "XX"]),
+                        codes=rng.choice(["", "P0301", "P0301,P0171"]), ev=rng.choice(["", "HB", "TW", "OS"]),
+                        # NB: no unmapped codes here — clean batches must be fully clean since B-021
+                        # (unknown evt fails to DLQ); unknown-code equivalence is covered by corrupt() paths.
                         ig=rng.choice([0, 1]))
         elif oem == "OEM_C":
             base.update(vin=vin, ts=f"2026-09-28T10:00:{i % 60:02d}.{i % 1000:03d}Z", lat=lat, lon=lon,

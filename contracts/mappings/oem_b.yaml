@@ -18,5 +18,5 @@ fields:
   evt:
     path: "$.ev"
     transform:
-      - enum_map: { HB: HARSH_BRAKE, HA: HARSH_ACCEL, ON: IGNITION_ON, OFF: IGNITION_OFF, TW: TOW, CR: CRASH, OS: OVERSPEED, DT: DTC_SET }
+      - enum_map: { HB: HARSH_BRAKE, HA: HARSH_ACCEL, "ON": IGNITION_ON, "OFF": IGNITION_OFF, TW: TOW, CR: CRASH, OS: OVERSPEED, DT: DTC_SET }  # ON/OFF MUST stay quoted: YAML 1.1 reads bare ON:/OFF: as booleans (B-021)
 drop_unmapped: true

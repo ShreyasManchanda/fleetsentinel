@@ -8,7 +8,7 @@ envelope:
   batch_id: "$.bid"
 fields:
   vin:        { path: "$.vin", transform: [strip, upper, validate_vin] }
-  ts_ms:      { path: "$.t", transform: [to_int, epoch_s_to_ms] }
+  ts_ms:      { path: "$.t", transform: [epoch_s_to_ms] }   # epoch_s_to_ms already does int(float(v)*1000); no to_int first (would truncate fractional seconds, B-021)
   lat:        { path: "$.la", transform: [to_float] }
   lon:        { path: "$.lo", transform: [to_float] }
   speed_kmh:  { path: "$.spd", transform: [to_float, { clamp: [0, 350] }] }

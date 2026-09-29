@@ -160,7 +160,20 @@ def _make_transform(spec: Any) -> Callable[[Any], Any]:
             bad = set(table.values()) - CANONICAL_EVENTS
             if bad:
                 raise MappingError(f"enum_map targets not canonical events: {sorted(bad)}")
-            return lambda v: table.get(str(v), "POSITION")
+
+            def _map_enum(v: Any, _table: dict[str, str] = table) -> str:
+                s = str(v)
+                if not s:
+                    return "POSITION"  # empty/missing event code = plain position update
+                try:
+                    return _table[s]
+                except KeyError:
+                    # Unknown codes (typo, new firmware event, schema drift) must NOT
+                    # be silently reclassified as POSITION: they fail the record so it
+                    # lands in the DLQ and feeds drift detection (B-021).
+                    raise RecordError(ERR_VALIDATION_FAILED, f"unmapped event code {s!r}") from None
+
+            return _map_enum
     raise MappingError(f"unsupported transform spec {spec!r}")
 
 

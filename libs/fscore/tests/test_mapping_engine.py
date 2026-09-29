@@ -148,3 +148,32 @@ def test_throughput_single_core():
     print(f"mapping engine: {rate:,.0f} records/s/core")
     # Baseline on a loaded dev laptop is ~11k rec/s/core. Stream B owns a batch-vectorised fast path (target >= 40k).
     assert rate > 8_000
+
+
+def test_unmapped_evt_fails_record_not_position():
+    """Unknown event codes (drift/new firmware) must fail to DLQ, not masquerade as POSITION (B-021)."""
+    m = load("oem_c.yaml")
+    good = sample("oem_c.json")["events"][0]
+    batch = {"batch_id": "x", "events": [good, {**good, "evt": "SOME_NEW_FW_CODE"}]}
+    r = m.apply(batch, now_ms=NOW)
+    assert len(r.ok) == 1 and len(r.failed) == 1
+    assert r.failed[0].reason == contracts.ERR_VALIDATION_FAILED
+    assert "unmapped event code" in r.failed[0].detail
+
+
+def test_oem_d_fractional_epoch_keeps_ms_precision():
+    """[to_int, epoch_s_to_ms] truncated sub-second precision; mapping now uses epoch_s_to_ms alone (B-021)."""
+    from fscore.mapping_engine import _make_transform
+
+    to_ms = _make_transform("epoch_s_to_ms")
+    assert to_ms(1790590502.789) == 1790590502789
+    m = load("oem_d_draft.yaml")
+    s = sample("oem_d.json")
+    col_t = s["cols"].index("t")
+    row = dict(zip(s["cols"], s["rows"][0], strict=True))
+    row["t"] = 1790590502.789
+    batch = {"bid": "frac", "schema": s["schema"], "cols": s["cols"],
+             "rows": [[row[c] for c in s["cols"]]]}
+    r = m.apply(batch, now_ms=NOW)
+    assert not r.failed, r.failed
+    assert r.ok[0]["ts_ms"] == 1790590502789
