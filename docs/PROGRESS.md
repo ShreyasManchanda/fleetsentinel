@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-29 morning IST** by the integrator (processor/lake suites green, 342 total).
+> Last updated: **2026-09-29 morning IST** by the integrator (M2 broker-free thin slice green).
 
 ## Clock
 
@@ -20,7 +20,7 @@
 | M0 | Phase 0: contracts + skeleton committed | Mon 28 Sep | DONE (commit `f93d27a`) |
 | M0b | Living docs + repo `CLAUDE.md` + docs check | Mon 28 Sep | DONE (pre-commit hook + CI `docs-fresh` job) |
 | M1 | Migrations verified on a real Timescale/pgvector Postgres | Mon 28 Sep night / Tue AM | DONE (2026-09-29 ~00:30 IST: `fs-pg` up, all 7 applied clean; timescaledb 2.30.1/vector 0.8.6; RLS proven B-019; B-013 FIXED). Container left running for stream C/D use |
-| M2 | Thin slice: simulator -> gateway -> Kafka -> normalizer -> processor -> Redis -> live vehicles visible | Tue 29 Sep EOD | NOT STARTED |
+| M2 | Thin slice: simulator -> gateway -> Kafka -> normalizer -> processor -> Redis -> live vehicles visible | Tue 29 Sep EOD | PARTIAL (broker-free path DONE: `tests/integration/test_thin_slice.py` — OEM payload bytes → normalize → priority TOW alert + bulk states + lake Parquet object, 2 tests green. Live-broker run needs Redpanda+Mosquitto+Redis; RAM-gated) |
 | M3 | Alerts + API + auth + basic copilot real | Wed 30 Sep midday | NOT STARTED |
 | M4 | Feature freeze (all T0 + agreed T1) | Wed 30 Sep 22:00 | NOT STARTED |
 | M5 | Evidence: load/burst/soak/chaos on cloud VM, reconciliation, 4 EXPLAIN cases, evals | Thu 1 Oct AM | NOT STARTED |
