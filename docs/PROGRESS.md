@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-29 morning IST** by the integrator (stream D launched).
+> Last updated: **2026-09-29** by the integrator (SQL 4/4 + algorithms write-up done; 344 green).
 
 ## Clock
 
