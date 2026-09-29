@@ -320,3 +320,10 @@ def test_resilient_publisher_buffers_and_drains():
     lst = ListAuditPublisher()
     asyncio.run(lst.publish(AuditRecord(action="x", decision="ALLOW")))
     assert len(lst.records) == 1
+
+def test_unknown_report_id_is_422_not_keyerror():
+    from fs_api.application.reports import validate_report_params
+    from fs_api.errors import ProblemError
+    with pytest.raises(ProblemError) as e:
+        validate_report_params("no_such_report", {})
+    assert e.value.status == 422 and e.value.code == "unknown-report"

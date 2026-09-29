@@ -17,6 +17,8 @@ REPORT_PARAMS: dict[str, dict[str, type]] = {
 
 def validate_report_params(report_id: str, params: dict[str, Any] | None) -> dict[str, Any]:
     """Only whitelisted, correctly-typed params reach the query layer (they are bound, never interpolated)."""
+    if report_id not in REPORT_PARAMS:
+        raise unprocessable(f"unknown report '{report_id}'", "unknown-report")
     allowed = REPORT_PARAMS[report_id]
     out: dict[str, Any] = {}
     for k, v in (params or {}).items():

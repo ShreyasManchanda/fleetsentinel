@@ -169,7 +169,6 @@ def test_oem_d_fractional_epoch_keeps_ms_precision():
     assert to_ms(1790590502.789) == 1790590502789
     m = load("oem_d_draft.yaml")
     s = sample("oem_d.json")
-    col_t = s["cols"].index("t")
     row = dict(zip(s["cols"], s["rows"][0], strict=True))
     row["t"] = 1790590502.789
     batch = {"bid": "frac", "schema": s["schema"], "cols": s["cols"],

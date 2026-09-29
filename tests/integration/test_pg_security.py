@@ -146,8 +146,8 @@ def test_audit_chain_verifies_then_detects_tamper(db):
 def test_erasure_replay_renders_erased_marker(db):
     """DB-level crypto-shredding: run the REAL DSR SQL (KEY_DESTROY/KEY_READ/DRIVER_NULL_PII
     from fs_api.adapters.pg_sql), then decrypt_or_erased must render [erased], not plaintext."""
-    from fscore import crypto
     from fs_api.adapters import pg_sql as q
+    from fscore import crypto
 
     admin = db
     t = _tenants(admin)
