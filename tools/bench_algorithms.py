@@ -42,7 +42,7 @@ def main() -> None:
     print(f"nearest_reachable(budget=3km, 50 chargers): found={r.found} goal={r.goal} "
           f"cost={r.cost:.3f} expansions={r.expansions}")
 
-    rng = random.Random(3)
+    rng = random.Random(3)  # noqa: S311 - deterministic benchmark data, not secrets
     y: list[float] = []
     for level in (0, 40, 0, 60, 5, 0):
         y += [level + rng.gauss(0, 1) for _ in range(200)]

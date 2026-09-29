@@ -24,7 +24,7 @@ def _plan(c, sql, params=()) -> str:
 
 
 def main() -> None:
-    rng = random.Random(4242)
+    rng = random.Random(4242)  # noqa: S311 - synthetic evidence data, not secrets
     c = psycopg.connect(ADMIN, autocommit=True)
     tid = c.execute("SELECT id FROM tenant WHERE name=%s", (TENANT,)).fetchone()[0]
     vids = [r[0] for r in c.execute("SELECT id FROM vehicle WHERE tenant_id=%s", (str(tid),)).fetchall()]
