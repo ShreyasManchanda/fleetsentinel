@@ -6,9 +6,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from fleetsentinel.v1 import alert_pb2, telemetry_pb2
-from fscore import contracts as C
 from fs_lake_sink.application.sink import LakeSinkService
 from fs_normalizer.core import NormalizerCore
 from fs_normalizer.drift import DriftMonitor
@@ -19,6 +17,7 @@ from fs_normalizer.registry import MappingRegistry
 from fs_processor.application.bulk_service import BulkConfig, BulkService
 from fs_processor.application.priority_service import PriorityConfig, PriorityService
 from fs_processor.models import InMsg as ProcInMsg
+from fscore import contracts as C
 
 ROOT = Path(__file__).resolve().parents[2]
 MAPS = ROOT / "contracts" / "mappings"
