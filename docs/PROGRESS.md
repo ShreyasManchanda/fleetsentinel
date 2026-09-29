@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-29 morning IST** by the integrator.
+> Last updated: **2026-09-29 morning IST** by the integrator (web verified + committed).
 
 ## Clock
 
@@ -35,7 +35,7 @@
 | B | ingestion + stream processing | agent (bg task, launched 23:05) + integrator fixes | PARTIAL | gateway (33) + normalizer (14) + algorithms/sketches/crypto/mapping_fast green (libs 150). **Processor + lake_sink implementation drafted by bg builder (untracked, no tests yet — not verified).** B-016 fixed; lint fully clean (B-018 FIXED) |
 | C | API + security | agent (lost, see log) | PARTIAL | 67 py files, 23 tests pass; no final report. RLS/BOLA gates need real-Postgres check (M1) |
 | D | intelligence (ML + copilot + batch) | unassigned | NOT STARTED | waits for stream A ground truth; launch next when A/B/C land (RAM) |
-| E | web | agent (bg task, launched ~00:35) | IN PROGRESS | empty dir; mock-first build against openapi.yaml, Command Center first |
+| E | web | agent (bg task, done) + integrator verified | DONE | 6 screens mock-first vs openapi.yaml, Command Center + deck.gl map; verified: typecheck/lint clean, 15 vitest green, build 7s. Real-API e2e + WebSocket pending stream C |
 | F | DevOps + QA | agent (bg task, launched 23:35) | IN PROGRESS (slice) | Terraform live+reference, STRIDE, Helm chart, k6/chaos/BDD skeletons, cost model. CI edits + live apply stay with integrator |
 
 ## Phase 0 checklist (done)
