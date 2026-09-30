@@ -75,3 +75,4 @@
 - 2026-09-28: created. Plan derived from spec.md v3 section 24; dates mapped to the Thu 1 Oct 23:00 IST deadline.
 - 2026-09-28: streams A, B, C launched as background agents (3 at a time because of RAM). D, E, F queued.
 - 2026-09-28 19:05 IST: new session (model change). Prior-session agents are gone with no final reports, but their working-tree output survived. Integrator verified: **all 294 tests pass** (tests+libs 165, simulator 59, gateway 33, normalizer 14, api 23) after fixing 3 test-side bugs in gateway (B-016). processor/lake_sink/agent/batch still skeletons, web/ empty. Next: commit this state, then finish processor + lake_sink (stream B remainder) before D/E/F.
+

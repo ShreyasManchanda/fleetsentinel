@@ -24,8 +24,8 @@ def _ev(vin, ts, **kw):
 
 
 def test_bdd_tow_alert():
-    from fscore import contracts as C
     from fs_processor.application.priority_service import PriorityConfig, PriorityService
+    from fscore import contracts as C
 
     svc = PriorityService(config=PriorityConfig(tenant_default="t1"),
                           tenant_of=lambda v: "t1", clock=lambda: 1_790_590_000_000)
@@ -52,10 +52,6 @@ def test_bdd_tenant_isolation():
     t = {n: str(i) for i, n in
          admin.execute("SELECT id, name FROM tenant WHERE name IN ('bdd-a','bdd-b')").fetchall()}
     try:
-        from fscore.vin import make_vin
-        import random
-
-        rng = random.Random(5)
         for tag in ("a", "b"):
             row = admin.execute(
                 "SELECT id FROM fleet WHERE tenant_id=%s AND name=%s", (t[f"bdd-{tag}"], f"bdd-f-{tag}")).fetchone()
