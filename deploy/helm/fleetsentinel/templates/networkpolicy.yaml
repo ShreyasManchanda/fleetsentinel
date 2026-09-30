@@ -1,0 +1,48 @@
+{{- /* Default-deny + explicit service-to-service / service-to-datastore allows. */ -}}
+{{- if .Values.networkPolicy.defaultDeny }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ namespaceSelector: { matchLabels: { name: kube-system } }, podSelector: { matchLabels: { k8s-app: kube-dns } } }]
+      ports: [{ port: 53, protocol: UDP }]
+{{- range $name, $svc := .Values.services }}
+{{- if not $svc.cronjob }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}-allow
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: {{ $name }} } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # web only; services talk to each other through Kafka/Postgres, not HTTP
+    {{- if eq $name "web" }}
+    - ports: [{ port: {{ $svc.port }} }]
+    {{- end }}
+  egress:
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: redpanda } } }]
+      ports: [{ port: 9092 }]
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: postgres } } }]
+      ports: [{ port: 5432 }]
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: redis } } }]
+      ports: [{ port: 6379 }]
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: minio } } }]
+      ports: [{ port: 9000 }]
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,61 @@
+{{- /* One Deployment + Service per entry in .Values.services (batch runs as CronJob instead). */ -}}
+{{- range $name, $svc := .Values.services }}
+{{- if not $svc.cronjob }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: {{ include "fs.labels" (dict "name" $name "Release" $.Release) | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels: { app.kubernetes.io/name: {{ $name }} }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: {{ $name }} }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 65532, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.global.imageRegistry }}{{ $svc.image }}:{{ $.Values.global.imageTag }}"
+          ports: [{ containerPort: {{ $svc.port }} }]
+          env: {{ include "fs.env" $ | nindent 12 }}
+          resources:
+            requests: { cpu: {{ $svc.cpuReq | quote }}, memory: {{ $svc.memReq | quote }} }
+            limits: { cpu: {{ $svc.cpuLim | quote }}, memory: {{ $svc.memLim | quote }} }
+          securityContext:
+            { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true,
+              capabilities: { drop: [ALL] } }
+          livenessProbe:
+            { httpGet: { path: {{ $.Values.probes.livenessPath }}, port: {{ $svc.port }} },
+              initialDelaySeconds: 20, periodSeconds: 15 }
+          readinessProbe:
+            { httpGet: { path: {{ $.Values.probes.readinessPath }}, port: {{ $svc.port }} },
+              initialDelaySeconds: 10, periodSeconds: 10,
+              # readiness additionally gates on consumer lag via the /ready handler,
+              # which returns 503 while lag exceeds the per-service threshold.
+            }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: {{ include "fs.labels" (dict "name" $name "Release" $.Release) | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: {{ $name }} }
+  ports: [{ port: {{ $svc.port }}, targetPort: {{ $svc.port }} }]
+{{- if $svc.hpa }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ $name }} }
+  minReplicas: {{ $svc.replicas }}
+  maxReplicas: 8
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } } }]
+{{- end }}
+{{- end }}
+{{- end }}

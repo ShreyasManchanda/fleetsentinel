@@ -1,0 +1,16 @@
+# k3s cloud VM (single node). Placeholders __HOSTIP__ (private IP) and __HOSTSLIP__
+# (IP with dashes, for sslip.io hostnames) are rendered by the Terraform cloud-init
+# script before `helm install -f values-vm.yaml`. Datastores run on the same VM.
+datastores:
+  kafka: "__HOSTIP__:9092"
+  postgres: "postgres://fs_app@__HOSTIP__:5432/fleetsentinel"
+  redis: "redis://__HOSTIP__:6379/0"
+  mongo: "mongodb://__HOSTIP__:27017"
+  s3Endpoint: "http://__HOSTIP__:9000"
+  keycloak: "https://auth.__HOSTSLIP__.sslip.io/realms/fleetsentinel"
+ingress:
+  enabled: true
+  host: "app.__HOSTSLIP__.sslip.io"
+  className: traefik
+services:
+  processor: { replicas: 8 }

@@ -1,0 +1,25 @@
+{{- /* Nightly batch as a CronJob (features, recompute, reports). */ -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: batch
+  labels: {{ include "fs.labels" (dict "name" "batch" "Release" .Release) | nindent 4 }}
+spec:
+  schedule: "15 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext: { runAsNonRoot: true, runAsUser: 65532, seccompProfile: { type: RuntimeDefault } }
+          containers:
+            - name: batch
+              image: "{{ .Values.global.imageRegistry }}{{ .Values.services.batch.image }}:{{ .Values.global.imageTag }}"
+              args: ["features", "--lake", "s3://fleetsentinel-lake/telemetry/"]
+              env: {{ include "fs.env" . | nindent 14 }}
+              resources:
+                requests: { cpu: "500m", memory: "1Gi" }
+                limits: { cpu: "2000m", memory: "4Gi" }
+              securityContext:
+                { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true,
+                  capabilities: { drop: [ALL] } }

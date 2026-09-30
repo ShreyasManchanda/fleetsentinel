@@ -1,0 +1,36 @@
+# Default values. Override per environment with values-kind.yaml (local) or values-vm.yaml (cloud VM).
+global:
+  imageRegistry: ""
+  imageTag: "1.0-submission"
+
+# Datastores are EXTERNAL to this chart (compose locally; host services / managed on the VM).
+# The chart only deploys the stateless app services + web. Configure endpoints here:
+datastores:
+  kafka: "redpanda:9092"
+  postgres: "postgres://fs_app@postgres:5432/fleetsentinel"
+  redis: "redis://redis:6379/0"
+  mongo: "mongodb://mongo:27017"
+  s3Endpoint: "http://minio:9000"
+  keycloak: "http://keycloak:8080/realms/fleetsentinel"
+
+services:
+  gateway:     { replicas: 2, image: "fleetsentinel/gateway",     port: 8000, cpuReq: "250m", memReq: "256Mi", cpuLim: "1000m", memLim: "1Gi" }
+  normalizer:  { replicas: 2, image: "fleetsentinel/normalizer",  port: 8000, cpuReq: "500m", memReq: "512Mi", cpuLim: "2000m", memLim: "2Gi" }
+  processor:   { replicas: 4, image: "fleetsentinel/processor",   port: 8000, cpuReq: "500m", memReq: "512Mi", cpuLim: "2000m", memLim: "2Gi" }
+  lake-sink:   { replicas: 1, image: "fleetsentinel/lake-sink",   port: 8000, cpuReq: "250m", memReq: "256Mi", cpuLim: "1000m", memLim: "1Gi" }
+  api:         { replicas: 2, image: "fleetsentinel/api",         port: 8000, cpuReq: "500m", memReq: "512Mi", cpuLim: "2000m", memLim: "2Gi", hpa: true }
+  agent:       { replicas: 1, image: "fleetsentinel/agent",       port: 8000, cpuReq: "250m", memReq: "512Mi", cpuLim: "1000m", memLim: "1Gi" }
+  batch:       { replicas: 0, image: "fleetsentinel/batch",       port: 8000, cpuReq: "500m", memReq: "1Gi",   cpuLim: "2000m", memLim: "4Gi", cronjob: true }
+  web:         { replicas: 2, image: "fleetsentinel/web",         port: 80,   cpuReq: "100m", memReq: "64Mi",  cpuLim: "500m",  memLim: "256Mi" }
+
+probes:
+  livenessPath: /health
+  readinessPath: /ready
+
+networkPolicy:
+  defaultDeny: true
+
+ingress:
+  enabled: false
+  host: "fleetsentinel.local"
+  className: traefik

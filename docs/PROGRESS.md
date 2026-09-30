@@ -36,7 +36,7 @@
 | C | API + security | agent (lost, see log) | PARTIAL | 67 py files, 23 tests pass; no final report. RLS/BOLA gates need real-Postgres check (M1) |
 | D | intelligence (ML + copilot + batch) | integrator (builder died B-025) | DONE | ml/ (37 tests, model+card) + agent (9 tests: tools/guardrails/briefing/LangGraph/stub-evals, FastAPI service) + batch (5 tests: DuckDB features/recompute/reports/reconcile, CLI). 395 total green |
 | E | web | agent (bg task, done) + integrator verified | DONE | 6 screens mock-first vs openapi.yaml, Command Center + deck.gl map; verified: typecheck/lint clean, 15 vitest green, build 7s. Real-API e2e + WebSocket pending stream C |
-| F | DevOps + QA | agent (bg task, launched 23:35) | IN PROGRESS (slice) | Terraform live+reference, STRIDE, Helm chart, k6/chaos/BDD skeletons, cost model. CI edits + live apply stay with integrator |
+| F | DevOps + QA | integrator (2 dead builders) | NEARLY DONE | cost model, Helm chart (services+PDB+NetPol+HPA+CronJob+ingress), Terraform live (VALIDATED) + reference (VALIDATED), k6 script, chaos script, pr.yml CI, contract tests (3), BDD (5 scenarios). Left: apply/destroy on cloud VM, load/chaos runs, ZAP scan |
 
 ## Phase 0 checklist (done)
 

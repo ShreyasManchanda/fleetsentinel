@@ -1,0 +1,60 @@
+name: pr
+on:
+  pull_request:
+    branches: [main]
+
+# Heavier gates than ci.yml (which runs on every push). Needs no laptop: all green on GitHub runners.
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg17
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: fleetsentinel }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 10s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --all-packages
+      - run: uv run python tools/fs.py migrate
+      - run: uv run pytest tests/ -q --no-cov
+      - run: uv run pytest ml services/agent services/batch -q --no-cov
+
+  contracts-bdd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --all-packages
+      - run: uv run pytest tests/contracts tests/bdd -q --no-cov
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm --prefix web ci
+      - run: npm --prefix web run typecheck
+      - run: npm --prefix web run lint
+      - run: npm --prefix web test
+      - run: npm --prefix web run build
+
+  image-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f deploy/docker/python-service.Dockerfile -t fs-api:ci .
+      - uses: aquasecurity/trivy-action@v0.24.0
+        with: { image-ref: fs-api:ci, severity: HIGH,CRITICAL, exit-code: '1' }
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform -chdir=infra/terraform/aws/live fmt -check
+      - run: terraform -chdir=infra/terraform/aws/reference fmt -check

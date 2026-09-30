@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fleetsentinel
+description: FleetSentinel connected-vehicle intelligence platform (same chart on kind and on the k3s cloud VM)
+type: application
+version: 1.0.0
+appVersion: "1.0-submission"

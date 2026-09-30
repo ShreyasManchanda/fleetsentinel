@@ -1,0 +1,10 @@
+# kind (local): in-cluster datastores match the compose service names.
+datastores:
+  kafka: "redpanda:9092"
+  postgres: "postgres://fs_app@postgres:5432/fleetsentinel"
+  redis: "redis://redis:6379/0"
+  mongo: "mongodb://mongo:27017"
+  s3Endpoint: "http://minio:9000"
+  keycloak: "http://keycloak:8080/realms/fleetsentinel"
+ingress:
+  enabled: false
