@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-09-29** by the integrator (stream D complete: 395 green, lint clean).
+> Last updated: **2026-09-29** by the integrator (full unit-test audit: 4 parallel agents on this model; baseline 403 green).
 
 ## Clock
 

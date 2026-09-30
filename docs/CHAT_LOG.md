@@ -40,3 +40,4 @@
 - **Stream F built directly (no subagents - rate-limited).** Cost model, Helm umbrella chart, Terraform live + reference (both terraform validate clean; fmt caught and fixed 3 syntax errors), k6 API load script, chaos kill-consumer script, pr.yml CI, 3 contract tests, 5 BDD scenarios with zero-dep runner - all green.
 - Lint pass over new suites (bdd/contracts imports); full suite green.
 - Solution Document drafted in brief order (docs/solution-document.md); free demo-URL guide (Cloudflare Tunnel/Codespace port-forward); .devcontainer committed for free load runs.
+- Full unit-test audit launched: 4 parallel agents (this model only, per user), partitioned libs+sim / pipeline services / api+agent+batch+ml / root+web+tools. Baseline 403 green before they started; they add tests only, fix nothing, integrator merges.
