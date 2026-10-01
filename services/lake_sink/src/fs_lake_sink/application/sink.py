@@ -54,7 +54,13 @@ class LakeSinkService:
         if not msg.value:
             return None
         ev = telemetry_pb2.TelemetryEvent()
-        ev.ParseFromString(msg.value)
+        try:
+            ev.ParseFromString(msg.value)
+        except Exception:  # poison record: skip + count, never halt the sink loop
+            self.metrics.corrupt.inc()
+            log.warning("lake_corrupt_record", topic=msg.topic, partition=msg.partition,
+                        offset=msg.offset)
+            return None
         buf = self._bufs.get(msg.partition)
         if buf is None:
             buf = self._bufs[msg.partition] = _Buffer(

@@ -77,7 +77,13 @@ class VaultTransitKek:
             resp = self.client.secrets.transit.encrypt_data(
                 name=self.key, plaintext=None, batch_input=[{"plaintext": base64.b64encode(d).decode()} for d in chunk])
             self.calls += 1
-            out.extend(item["ciphertext"].encode() for item in resp["data"]["batch_results"])
+            results = resp["data"]["batch_results"]
+            if len(results) != len(chunk):
+                raise RuntimeError(f"Vault returned {len(results)} results for {len(chunk)} DEKs")
+            for item in results:
+                if "error" in item:
+                    raise RuntimeError(f"Vault batch item failed: {item['error']}")
+                out.append(item["ciphertext"].encode())
         return out
 
 

@@ -66,8 +66,10 @@ class NoiseInjector:
         return out, is_dup, is_late
 
     def flush(self) -> Emission | None:
-        """Release everything still held (end of run)."""
+        """Release everything still held (end of run). None when nothing is held."""
         out, self.held = self.held, None
         self.held_rel = np.zeros(0)
         self.held_kind = np.zeros(0, dtype=np.int8)
+        if out is None or len(out) == 0:
+            return None
         return out

@@ -87,7 +87,6 @@ def test_wheel_property_exactly_once_never_early(deadlines, steps):
         for key, dl in w.advance(wm):
             assert key not in fired
             assert dl <= wm                       # never early
-            assert wm - dl < tick + s or True
             fired[key] = wm
     wm += 400_000
     for key, dl in w.advance(wm):

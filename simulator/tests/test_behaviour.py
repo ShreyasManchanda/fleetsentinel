@@ -18,7 +18,7 @@ def test_deterministic_given_seed(fleet, routes):
     c, _ = make_sim(fleet, routes, seed=10)
     ea, eb, ec = _cat(run(a, 30)), _cat(run(b, 30)), _cat(run(c, 30))
     assert (ea["lat"] == eb["lat"]).all() and (ea["seq"] == eb["seq"]).all() and (ea["ts_ms"] == eb["ts_ms"]).all()
-    assert len(ea["lat"]) != len(ec["lat"]) or not (ea["speed"] == ec["speed"]).all()
+    assert len(ea["lat"]) == len(ec["lat"]) and not (ea["speed"] == ec["speed"]).all()
 
 
 def test_all_four_states_and_event_types_occur(fleet, routes):

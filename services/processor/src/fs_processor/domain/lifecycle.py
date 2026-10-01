@@ -38,9 +38,7 @@ class OpenAlert:
 
 
 def trace_id_of(headers: dict[str, bytes]) -> str:
-    raw = headers.get(C.H_TRACEPARENT, b"").decode(errors="replace")
-    parts = raw.split("-")
-    return parts[1] if len(parts) >= 3 else ""
+    return C.trace_id_of(headers.get(C.H_TRACEPARENT, b""))
 
 
 class AlertLedger:

@@ -174,9 +174,7 @@ class NormalizerCore:
 
     @staticmethod
     def drift_alert(ev: DriftEvent, now: int, hdr: dict[str, bytes] | None = None) -> alert_pb2.Alert:
-        tp = (hdr or {}).get(C.H_TRACEPARENT, b"").decode()
-        parts = tp.split("-")
-        trace_id = parts[1] if len(parts) >= 3 else ""
+        trace_id = C.trace_id_of((hdr or {}).get(C.H_TRACEPARENT, b""))
         pct = round(ev.ratio * 100)
         text = f"Schema drift: {ev.oem} {pct}% of records failing ({ev.failed}/{ev.total})"
         if ev.sw_version:

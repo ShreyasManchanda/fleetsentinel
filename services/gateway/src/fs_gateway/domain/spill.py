@@ -151,6 +151,10 @@ class SpillBuffer:
         tmp.write_bytes(orjson.dumps({"seg": self._read_seg, "off": self._read_off}))
         os.replace(tmp, self._cursor_file)
 
+    #: Max bytes scanned forward to resync after a corrupt frame. Frames are ≤1 MB
+    #: (gateway max payload); the bound keeps a pathological segment from stalling replay.
+    _RESYNC_LIMIT = 2 * 1024 * 1024
+
     @staticmethod
     def _read_frame(f) -> tuple[SpillRecord, int] | None:
         hdr = f.read(_HDR.size)
@@ -159,8 +163,38 @@ class SpillBuffer:
         ml, vl, crc = _HDR.unpack(hdr)
         body = f.read(ml + vl)
         if len(body) < ml + vl or zlib.crc32(body) != crc:
-            return None
-        return _decode(body[:ml], body[ml:]), f.tell()
+            return SpillBuffer._resync(f)
+        try:
+            return _decode(body[:ml], body[ml:]), f.tell()
+        except Exception:
+            return SpillBuffer._resync(f)
+
+    @staticmethod
+    def _resync(f):
+        """A corrupt frame must not abandon later good frames in the same segment.
+
+        Scan forward byte-by-byte (bounded) for the next header whose body CRC
+        validates; the corrupt bytes are skipped and counted as lost. Returns None
+        only at EOF / GIR limit (genuinely torn tail)."""
+        scanned = 0
+        while scanned < SpillBuffer._RESYNC_LIMIT:
+            pos = f.tell()
+            hdr = f.read(_HDR.size)
+            if len(hdr) < _HDR.size:
+                return None
+            ml, vl, crc = _HDR.unpack(hdr)
+            if 0 < ml <= 1_048_576 and 0 <= vl <= 1_048_576:
+                body = f.read(ml + vl)
+                if len(body) == ml + vl and zlib.crc32(body) == crc:
+                    try:
+                        return _decode(body[:ml], body[ml:]), f.tell()
+                    except Exception:  # noqa: S110 - corrupt frame content: keep resyncing
+                        pass
+                f.seek(pos + 1)
+            else:
+                f.seek(pos + 1)
+            scanned += 1
+        return None
 
     def _recover(self) -> None:
         """Count pending records; truncate a torn tail in the last segment; drop fully consumed segments."""

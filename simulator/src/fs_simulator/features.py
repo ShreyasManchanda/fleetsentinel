@@ -38,6 +38,11 @@ def build_features(rows: pa.Table, prediction_ts_ms: int, window_days: float = 7
         assert_no_leakage(int(sub["ts_ms"].to_numpy().max()), prediction_ts_ms)
     vins, inv = np.unique(np.array(_col(sub, "vin").to_pylist(), dtype=object), return_inverse=True)
     k = len(vins)
+    if k == 0:  # empty pre-prediction window: valid input (new vehicle), return empty frame, not IndexError
+        zf, zo = np.zeros(0), np.zeros(0, dtype=object)
+        return {"vin": zo, "n_rows": zf, "dtc_rows": zf, "dtc_distinct": zf, "critical_dtc_rows": zf,
+                "soh_last": zf, "soh_slope_per_day": zf, "harsh_events": zf, "km_driven": zf,
+                "idle_share": zf, "mean_speed_moving": zf, "hours_since_last_dtc": zf}
     t = sub["ts_ms"].to_numpy().astype(float)
     dtc = np.array(_col(sub, "dtc").to_pylist(), dtype=object)
     has_dtc = np.array([d is not None for d in dtc])
@@ -58,22 +63,25 @@ def build_features(rows: pa.Table, prediction_ts_ms: int, window_days: float = 7
     slope = np.where((n >= 2) & (den > 1e-9), (n * sxy - sx * sy) / np.where(den > 1e-9, den, 1.0), np.nan)
     order = np.lexsort((t, inv))
     last = np.full(k, np.nan)
+    km_time_ordered = np.zeros(k)
     if len(order):
         lastpos = np.r_[np.flatnonzero(np.diff(inv[order])), len(order) - 1]
+        firstpos = np.r_[0, np.flatnonzero(np.diff(inv[order])) + 1]
+        odo_sorted = odo[order]
+        # Time-ordered last-minus-first, clamped: an odometer rollback must not inflate km.
+        km_time_ordered[inv[order][lastpos]] = np.maximum(
+            odo_sorted[lastpos] - odo_sorted[firstpos], 0.0)
         soh_sorted = soh[order]
         last[inv[order][lastpos]] = soh_sorted[lastpos]
     last_dtc_t = np.full(k, -np.inf)
     np.maximum.at(last_dtc_t, inv[has_dtc], t[has_dtc])
-    omax, omin = np.full(k, -np.inf), np.full(k, np.inf)
-    np.maximum.at(omax, inv, odo)
-    np.minimum.at(omin, inv, odo)
     pairs = np.unique(np.stack([inv[has_dtc], np.array([hash(d) for d in dtc[has_dtc]])], axis=1), axis=0) if has_dtc.any() else np.zeros((0, 2))
     return {
         "vin": vins, "n_rows": cnt, "dtc_rows": np.bincount(inv, weights=has_dtc, minlength=k), "dtc_distinct":
         np.bincount(pairs[:, 0].astype(int), minlength=k).astype(float) if len(pairs) else np.zeros(k),
         "critical_dtc_rows": np.bincount(inv, weights=crit, minlength=k), "soh_last": last, "soh_slope_per_day": slope,
         "harsh_events": np.bincount(inv, weights=(evt == "HARSH_BRAKE") | (evt == "HARSH_ACCEL"), minlength=k),
-        "km_driven": np.maximum(omax - omin, 0.0), "idle_share": np.bincount(inv, weights=(state == 2), minlength=k) / cnt,
+        "km_driven": km_time_ordered, "idle_share": np.bincount(inv, weights=(state == 2), minlength=k) / cnt,
         "mean_speed_moving": np.bincount(inv, weights=speed * moving, minlength=k) / np.maximum(np.bincount(inv, weights=moving, minlength=k), 1.0),
         "hours_since_last_dtc": np.where(np.isfinite(last_dtc_t), (prediction_ts_ms - last_dtc_t) / 3_600_000.0, np.nan),
     }

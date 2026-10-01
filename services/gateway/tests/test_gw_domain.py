@@ -197,3 +197,26 @@ def test_spill_corrupt_cursor_file_is_tolerated(tmp_path):
     (tmp_path / "cursor.json").write_bytes(b"{broken")
     sb2 = SpillBuffer(tmp_path)
     assert len(sb2) == 1 and os.path.exists(tmp_path)
+
+
+def test_spill_mid_segment_corruption_does_not_abandon_later_records(tmp_path):
+    # A corrupt frame mid-segment resyncs: later good frames still replay (audit fix).
+    sb = SpillBuffer(tmp_path, segment_bytes=10_000)
+    for i in range(5):
+        sb.append(rec(i))
+    sb.sync()
+    sb.close()
+    seg = sorted(tmp_path.glob("seg-*.log"))[0]
+    raw = bytearray(seg.read_bytes())
+    # corrupt one byte inside the 3rd frame's body (frame 0 starts at 0; find 3rd header)
+    import struct
+
+    off = 0
+    for _ in range(2):
+        ml, vl, _crc = struct.unpack(">III", bytes(raw[off:off + 12]))
+        off += 12 + ml + vl
+    ml, vl, _crc = struct.unpack(">III", bytes(raw[off:off + 12]))
+    raw[off + 12] ^= 0xFF  # flip a body byte -> CRC mismatch on frame 3
+    seg.write_bytes(bytes(raw))
+    sb2 = SpillBuffer(tmp_path, segment_bytes=10_000)
+    assert [int(r.headers["n"]) for _, r in sb2.peek(10)] == [0, 1, 3, 4]

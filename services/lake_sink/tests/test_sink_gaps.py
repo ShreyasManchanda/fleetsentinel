@@ -109,10 +109,11 @@ def test_cross_instance_rewrite_is_byte_identical():
     assert k1 == k2 and svc1.written_keys == svc2.written_keys == [k1]
 
 
-def test_corrupt_protobuf_value_raises_fail_fast():
+def test_corrupt_protobuf_value_skipped_and_counted():
+    # Fixed (audit): a poison record must not halt the sink loop — skip + count.
     svc = LakeSinkService(_MemStore(), max_records=100)
-    with pytest.raises(Exception):
-        svc.add(InMsg("t", 0, 0, b"V1", b"\xff\xff not protobuf \x00\x01", {}))
+    assert svc.add(InMsg("t", 0, 0, b"V1", b"\xff\xff not protobuf \x00\x01", {})) is None
+    assert svc.pending(0) == 0
 
 
 def test_empty_bytes_value_skipped_without_parsing():

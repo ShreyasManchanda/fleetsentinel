@@ -1,6 +1,7 @@
 """Topic names, header names and stable namespaces. Mirrors contracts/topics.yaml (a test enforces parity)."""
 from __future__ import annotations
 
+import re
 import uuid
 
 INGEST_RAW = "ingest.raw.v1"
@@ -53,3 +54,19 @@ def trip_id(vin: str, start_ts_ms: int) -> str:
 def tenant_id(slug: str) -> str:
     """Deterministic tenant id shared by the Keycloak realm generator and the simulator seed."""
     return str(uuid.uuid5(NAMESPACE_FS, f"tenant|{slug}"))
+
+
+_TRACEPARENT = re.compile(r"^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$")
+
+
+def trace_id_of(header_value: bytes | str | None) -> str:
+    """W3C traceparent -> 32-hex trace id, or "" when absent/malformed.
+
+    Shared so every service validates identically: a 3-dash string with a short
+    trace id must not silently become a corrupt linkage (audit finding).
+    """
+    if not header_value:
+        return ""
+    raw = header_value.decode(errors="replace") if isinstance(header_value, bytes) else header_value
+    m = _TRACEPARENT.match(raw.strip().lower())
+    return m.group(1) if m else ""

@@ -9,6 +9,7 @@ class LakeSinkMetrics:
         r = registry or CollectorRegistry()
         self.registry = r
         self.records = Counter("lake_records_total", "Normalized events buffered", registry=r)
+        self.corrupt = Counter("lake_corrupt_records_total", "Poison records skipped", registry=r)
         self.objects = Counter("lake_objects_written_total", "Parquet objects PUT", registry=r)
         self.object_bytes = Counter("lake_object_bytes_total", "Parquet bytes written", registry=r)
         self.batch_seconds = Histogram(

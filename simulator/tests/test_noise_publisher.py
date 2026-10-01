@@ -139,7 +139,7 @@ def test_batch_retries_resend_identical_payload_and_ledger_counts(fleet, routes)
     msgs = [m for i in range(15) for m in pub.tick(1.0, now=float(i))]
     assert pub.stats.batch_retries > 0 and len(msgs) > len({p for _, p in msgs})   # identical payload sent twice
     led = pub.ledger
-    assert led.unique.sum() > 0 and led.dups.sum() > 0 and led.late.sum() >= 0
+    assert led.unique.sum() > 0 and led.dups.sum() > 0 and led.late.sum() > 0  # noise on: late > 0
     assert (led.bulk + led.event).sum() == led.unique.sum() + led.dups.sum()
     seen = led.unique > 0
     assert (led.last_seq[seen] >= led.first_seq[seen]).all()

@@ -319,7 +319,7 @@ def test_bulk_runner_restore_with_no_saved_state_is_noop():
 
 def test_checkpoint_restore_preserves_harsh_odo_and_spots():
     svc = _svc(harsh_threshold=3)
-    store, com = {}, None
+    store = {}
 
     class _Mem:
         def save(self, p, s): store[p] = s
