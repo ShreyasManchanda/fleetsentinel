@@ -39,6 +39,8 @@ def bucket_step(tokens: float, last_ts: float, now: float, capacity: int, refill
     tokens = min(float(capacity), tokens + max(0.0, now - last_ts) * refill_per_s)
     if tokens >= cost:
         return True, tokens - cost, 0.0
+    if refill_per_s <= 0:
+        return False, tokens, float("inf")  # zero refill: denied forever, never divide by zero
     return False, tokens, (cost - tokens) / refill_per_s
 
 
@@ -85,5 +87,5 @@ def rate_headers(d: Decision) -> dict[str, str]:
         "RateLimit-Reset": str(d.reset_s),
     }
     if not d.allowed:
-        h["Retry-After"] = str(max(1, d.retry_after_s))
+        h["Retry-After"] = str(max(1, min(d.retry_after_s, 86_400)))  # clamp inf (zero-refill deny) to a day
     return h

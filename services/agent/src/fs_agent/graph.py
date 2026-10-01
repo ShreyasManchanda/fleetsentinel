@@ -72,7 +72,10 @@ def build_graph(registry: ToolRegistry, llm: LlmCaller):
 
     def answer(state: Turn) -> dict:
         if state.get("answer") and not state.get("results"):
-            return {"grounded": True, "degraded": False}
+            grounded, _ = grounding_check(state["answer"], [])
+            if not grounded:
+                return degraded_answer(state["question"], [])
+            return {"answer": state["answer"], "grounded": True, "degraded": False}
         out = llm(f"Answer this question using ONLY these tool results: {state['question']}",
                   [], state.get("results", [])) or {}
         text = str(out.get("answer", ""))

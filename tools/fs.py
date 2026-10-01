@@ -119,9 +119,12 @@ def main() -> int:
         rc = _compose("up", "-d", "--wait")
         if rc or args.cmd == "up":
             return rc
-        print("stack healthy - applying migrations and creating topics")
+        print("stack healthy - creating MinIO buckets, applying migrations and topics")
+        subprocess.call(["uv", "run", "--frozen", "python", str(ROOT / "tools" / "minio_init.py")])
         cmd_migrate(argparse.Namespace(to=None))
-        return cmd_topics(argparse.Namespace(rf=int(os.environ.get("FS_RF", "1"))))
+        # topics need confluent_kafka (workspace env): re-enter fs.py under uv
+        return subprocess.call(["uv", "run", "--frozen", "python", str(ROOT / "tools" / "fs.py"),
+                                "topics", "--rf", os.environ.get("FS_RF", "1")])
     if args.cmd == "down":
         return _compose("down")
     if args.cmd == "logs":

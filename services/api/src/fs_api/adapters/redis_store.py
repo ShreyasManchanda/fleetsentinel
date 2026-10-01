@@ -36,9 +36,11 @@ if tokens == nil then tokens = cap; ts = now end
 tokens = math.min(cap, tokens + math.max(0, now - ts) * rate)
 local allowed = 0
 local retry = 0
-if tokens >= cost then tokens = tokens - cost; allowed = 1 else retry = (cost - tokens) / rate end
+if tokens >= cost then tokens = tokens - cost; allowed = 1
+elseif rate <= 0 then retry = -1
+else retry = (cost - tokens) / rate end
 redis.call('HSET', key, 'tokens', tostring(tokens), 'ts', tostring(now))
-redis.call('EXPIRE', key, math.ceil(cap / rate) + 1)
+if rate > 0 then redis.call('EXPIRE', key, math.ceil(cap / rate) + 1) else redis.call('PERSIST', key) end
 return {allowed, tostring(tokens), tostring(retry)}
 """
 
@@ -55,6 +57,10 @@ class RedisBucketStore:
     async def take(self, key: str, capacity: int, refill_per_s: float, cost: int = 1) -> Decision:
         allowed, tokens, retry = await self._script(keys=[key], args=[capacity, refill_per_s, cost])
         tokens_f, retry_f = float(tokens), float(retry)
+        if refill_per_s <= 0:
+            # Zero refill: denied forever (Lua reports retry=-1); mirror bucket_step's inf.
+            return Decision(bool(int(allowed)), capacity, int(tokens_f),
+                            0 if int(allowed) else math.inf, 0)
         return Decision(bool(int(allowed)), capacity, int(tokens_f), math.ceil(retry_f) if not int(allowed) else 0,
                         math.ceil((capacity - tokens_f) / refill_per_s))
 

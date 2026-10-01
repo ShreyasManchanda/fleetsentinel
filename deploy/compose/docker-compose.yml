@@ -99,7 +99,7 @@ services:
 
   minio:
     <<: *restart
-    image: ${MINIO_IMAGE:-minio/minio:latest}
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2023-09-07T02-05-02Z}   # pinned to a cached release (latest left Docker Hub; quay 401s here) — B-026
     profiles: [infra]
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
@@ -113,22 +113,9 @@ services:
       timeout: 5s
       retries: 20
 
-  minio-init:
-    image: ${MINIO_MC_IMAGE:-minio/mc:latest}
-    profiles: [infra]
-    depends_on:
-      minio: { condition: service_healthy }
-    restart: "no"
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}
-        mc mb --ignore-existing local/fleetsentinel-lake
-        # WORM (object-lock) bucket for the daily audit-chain anchor: tamper-evident, cannot be overwritten during retention
-        mc mb --ignore-existing --with-lock local/fleetsentinel-audit-anchor
-        mc retention set --default COMPLIANCE 1d local/fleetsentinel-audit-anchor || true
-        # tiering as configured for the cost model: lake expires raw partitions after 400 days (13 months)
-        mc ilm rule add --expire-days 400 local/fleetsentinel-lake || true
+  # NOTE: bucket init (lake + WORM anchor) runs host-side in `python tools/fs.py bootstrap`
+  # via tools/minio_init.py (boto3). The old minio/mc container was dropped: the image
+  # left Docker Hub and quay.io now 401s without auth (B-026).
 
   # ------------------------------------------------------------------ identity + secrets
   keycloak:

@@ -61,6 +61,10 @@ async def amain() -> None:
 
 
 def main() -> None:
+    if sys.platform == "win32":
+        # aiomqtt/paho needs add_writer: ProactorEventLoop (Windows default) raises
+        # NotImplementedError and the MQTT client can never connect (B-027).
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(amain())
 
 

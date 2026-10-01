@@ -70,3 +70,56 @@ def test_gateway_normalizer_share_one_topic_contract():
              Settings(lane="priority").resolved().in_topic}
     assert lanes <= names, f"normalizer lanes not in topics.yaml: {lanes - names}"
     assert lanes == {C.INGEST_RAW, C.INGEST_PRIORITY}
+
+
+def test_normalizer_lanes_are_isolated_no_bulk_lag_on_priority():
+    """Priority lane must use its own group + topics so bulk lag never delays it."""
+    from fs_normalizer.settings import Settings
+    from fscore import contracts as C
+
+    bulk = Settings(lane="bulk").resolved()
+    pri = Settings(lane="priority").resolved()
+    assert bulk.group_id != pri.group_id, "lanes share a consumer group"
+    assert (bulk.in_topic, bulk.out_topic) == (C.INGEST_RAW, C.TELEMETRY_NORMALIZED)
+    assert (pri.in_topic, pri.out_topic) == (C.INGEST_PRIORITY, C.TELEMETRY_PRIORITY)
+    assert bulk.dlq_topic == pri.dlq_topic == C.DLQ_INGEST
+
+    topics = yaml.safe_load((ROOT / "contracts" / "topics.yaml").read_text(encoding="utf-8"))
+    groups = topics["consumer_groups"]
+    assert groups["normalizer"] == [C.INGEST_RAW]
+    assert groups["normalizer-priority"] == [C.INGEST_PRIORITY]
+
+
+# Write ops the web console never calls: owned server-side (copilot/admin/simulator).
+SERVER_SIDE_WRITES = {
+    "/v1/agent/actions",  # propose_action is created by the copilot, not the browser
+    "/v1/agent/briefing",  # POST regenerate; the console polls GET
+    "/v1/dlq/replay",  # platform-admin replay after mapping activation
+    "/v1/mappings",  # mapping draft upload (editor uses preview + approve flow)
+    "/v1/mappings/{oem}/versions/{version}/activate",
+    "/v1/mappings/{oem}/versions/{version}/approve",
+    "/v1/reports/batch",  # high-volume simulator ingest, batch id is the dedup key
+}
+
+
+def test_every_openapi_write_is_called_by_web_or_owned_server_side():
+    """No write op may exist that neither the console nor a documented owner uses."""
+    import re
+
+    spec = yaml.safe_load((ROOT / "contracts" / "openapi.yaml").read_text(encoding="utf-8"))
+    client = (ROOT / "web" / "src" / "api" / "client.ts").read_text(encoding="utf-8")
+    # client.ts builds paths with template literals: `/v1/alerts/${id}/ack`.
+    # Normalize both sides so `${id}` and `{id}` segments compare equal.
+    used = set()
+    for raw in re.findall(r"[`'\"](/v1/[^`'\"?]*)", client):
+        used.add(re.sub(r"\$\{[^}]*\}", "{}", raw.split("?")[0]))
+    uncovered = set()
+    for path, item in spec["paths"].items():
+        if not any(m in item for m in ("post", "put", "patch", "delete")):
+            continue
+        if path in SERVER_SIDE_WRITES:
+            continue
+        if re.sub(r"\{[^}]*\}", "{}", path) in used:
+            continue
+        uncovered.add(path)
+    assert not uncovered, f"write ops with no caller and no owner: {sorted(uncovered)}"

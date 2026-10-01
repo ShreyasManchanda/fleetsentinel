@@ -41,3 +41,4 @@
 - Lint pass over new suites (bdd/contracts imports); full suite green.
 - Solution Document drafted in brief order (docs/solution-document.md); free demo-URL guide (Cloudflare Tunnel/Codespace port-forward); .devcontainer committed for free load runs.
 - Full unit-test audit launched: 4 parallel agents (this model only, per user), partitioned libs+sim / pipeline services / api+agent+batch+ml / root+web+tools. Baseline 403 green before they started; they add tests only, fix nothing, integrator merges.
+- Submission-day live run: full infra green via bootstrap (fixed B-026 minio images, mosquitto ACL, uv topics). Unit-test audit: 4 agents relaunched on this model; agent-3 report folded (75->156, 7 src bugs fixed B-028); gateway Windows selector-loop fix (B-027). Dry run: seed lite + 5 lanes up.

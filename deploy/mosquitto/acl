@@ -6,3 +6,4 @@ pattern write event/%u/#
 user gateway
 topic read telemetry/#
 topic read event/#
+topic read $SYS/#

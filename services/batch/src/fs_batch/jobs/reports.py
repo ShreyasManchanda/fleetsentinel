@@ -61,7 +61,7 @@ def carbon_by_fleet(con: duckdb.DuckDBPyConnection, lake_glob: str,
           FROM read_parquet(?)
           GROUP BY vin, oem
         )
-        SELECT oem, sum(km) FROM span GROUP BY oem ORDER BY oem
+        SELECT oem, sum(CASE WHEN km > 0 THEN km ELSE 0 END) FROM span GROUP BY oem ORDER BY oem
         """,
         [lake_glob],
     ).fetchall()

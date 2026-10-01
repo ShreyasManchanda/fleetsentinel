@@ -57,7 +57,7 @@ functions. Missing path => value absent (then `default`/`required` decide).
 | `epoch_s_to_ms` | seconds -> milliseconds |
 | `iso8601_to_ms` | ISO-8601 string -> epoch ms (UTC) |
 | `split_csv` | `"P0301,P0171"` -> list |
-| `enum_map: {SRC: CANON}` | map source codes to canonical `EventType` names; unmapped -> `POSITION` |
+| `enum_map: {SRC: CANON}` | map source codes to canonical `EventType` names; unknown non-empty codes fail the record to the DLQ (`VALIDATION_FAILED`, feeds drift detection); empty/missing stays `POSITION` |
 | `validate_vin` | ISO 3779 check (fscore.vin) - failure sends the record to the DLQ (`VALIDATION_FAILED`) |
 | `validate_dtc` | keep only `^[PBCU][0-9A-F]{4}$` codes, de-duplicated |
 

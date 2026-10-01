@@ -35,6 +35,12 @@ def validate_report_params(report_id: str, params: dict[str, Any] | None) -> dic
             except ValueError:
                 raise unprocessable(f"parameter '{k}' must be YYYY-MM-DD", "invalid-report-params") from None
         out[k] = v
+    if "from" in allowed and "to" in allowed and "from" in out and "to" in out:
+        days = (date.fromisoformat(out["to"]) - date.fromisoformat(out["from"])).days
+        if days < 0:
+            raise unprocessable("'to' must not be before 'from'", "invalid-range")
+        if days > 366:
+            raise unprocessable("range exceeds 366 days", "invalid-range")
     return out
 
 

@@ -45,9 +45,9 @@ class PostgresAlertStore:
     """Idempotent alert sink: deterministic ids + ON CONFLICT DO NOTHING."""
 
     def __init__(self, dsn: str, tenant_sql: str = "SELECT set_config('app.tenant_id', %s, true)") -> None:
-        import psycopg
+        from psycopg_pool import ConnectionPool
 
-        self._pool = psycopg.ConnectionPool(dsn, open=True)
+        self._pool = ConnectionPool(dsn, open=True)
         self._tenant_sql = tenant_sql
 
     def insert_alerts(self, rows: list[dict]) -> int:

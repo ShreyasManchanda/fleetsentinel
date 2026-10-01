@@ -52,12 +52,12 @@ def reconcile(incidents: list[Incident], alerts: list[FiredAlert]) -> Reconcilia
         by_vin.setdefault(a.vin, []).append(a)
     matched = missed = 0
     latencies: list[float] = []
-    used: set[int] = set()
+    used: set[tuple[str, int]] = set()  # (vin, per-vin index): global indices collide across VINs
     for inc in incidents:
         rules = KIND_TO_RULES.get(inc.kind, ())
         hit = None
         for i, a in enumerate(by_vin.get(inc.vin, [])):
-            if i in used or a.rule not in rules:
+            if (inc.vin, i) in used or a.rule not in rules:
                 continue
             if abs(a.event_ts_ms - inc.start_ts_ms) <= MATCH_WINDOW_MS:
                 hit = (i, a)
@@ -66,7 +66,7 @@ def reconcile(incidents: list[Incident], alerts: list[FiredAlert]) -> Reconcilia
             missed += 1
         else:
             i, a = hit
-            used.add(i)
+            used.add((inc.vin, i))
             matched += 1
             latencies.append(max(a.detected_ts_ms - inc.start_ts_ms, 0))
     fps = len(alerts) - len(used)

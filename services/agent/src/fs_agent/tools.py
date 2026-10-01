@@ -46,6 +46,8 @@ class ToolRegistry:
             backend = self._backends[name]
         except KeyError:
             raise UnknownTool(f"no backend wired for {name}") from None
+        args = dict(args or {})
+        args.pop("tenant_id", None)  # an LLM-supplied tenant must never override or crash the call
         missing = [a for a in _REQUIRED.get(name, ()) if a not in args]
         if missing:
             raise BadToolArgs(f"{name} missing args: {missing}")
