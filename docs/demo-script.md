@@ -1,5 +1,24 @@
 # FleetSentinel demo video — recording runbook
 
+> **Updated 2026-10-01 (evening).** Read "Pre-flight" first. The live stack reaches alerts end to end, but the console's KPI tiles, Copilot briefing and driver scorecards are empty live (BUGS B-032), so **UI beats are recorded in mock mode and narrated as fixture data**; terminal beats run live.
+
+## Pre-flight (do this before pressing record)
+
+Mock-mode console (UI beats 2, 4, 5, 8, 9): in `web/`, `.env` must contain only `VITE_HIDE_MOCK_BANNER=1` (no `VITE_API_BASE_URL`, no `VITE_OIDC_ISSUER`), then `npm.cmd run dev` and open http://localhost:5173. Log in with **Continue with mock token** *before* recording starts (the login screen carries a DEV ONLY label), so the recording opens on the Command Center. Hiding the banner only removes the banner; when you speak, say "recorded fixture data" for anything read from the mock.
+
+Live stack (terminal beats 3, 5-trigger, 6, 7), all from the repo root, one terminal each:
+1. Infra is already up if `docker ps` lists 8 healthy `fleetsentinel-*` containers; otherwise `python tools/fs.py bootstrap`.
+2. API: `FS_API_KAFKA_BOOTSTRAP=localhost:19092 uv run --frozen python -m fs_api` (port 8000).
+3. Agent: `uv run --frozen uvicorn fs_agent.service:app --port 8100`.
+4. Gateway: `uv run --frozen python -m fs_gateway.main`.
+5. Normalizers: `FS_NORMALIZER_LANE=bulk FS_NORMALIZER_METRICS_PORT=9103 uv run --frozen python -m fs_normalizer.main` and the same with `LANE=priority`, port `9104`.
+6. Processors: `FS_LANE=priority uv run --frozen python -m fs_processor.main` and `FS_LANE=bulk ...`.
+7. State bridge: `uv run --frozen python tools/redis_state_bridge.py` (B-031 workaround).
+8. Simulator (must be the full 100k fleet; a smaller `--vehicles` makes VINs the database does not know): `uv run --frozen python -m fs_simulator.publish --duration 1800 --certs deploy/certs`.
+9. To show the live web console instead of mock: put `VITE_API_BASE_URL=http://localhost:8000`, `VITE_OIDC_ISSUER=http://localhost:8080/realms/fleetsentinel`, `VITE_OIDC_CLIENT_ID=fs-web` in `web/.env`, log in with Keycloak as `admin@apex-logistics.demo` / `Passw0rd!`. Live, only the alert feed and map are populated.
+
+Honest-narration rule: never read a number the screen did not show, and never call mock data live.
+
 For a presenter who has never used the app. Follow it word-for-word. Total run time budget: **4:45**, leaving a **:15 buffer** against the 5:00 hard cap (spec.md §21).
 
 **Mock-mode note:** every beat below has a mock-mode fallback because `web/` is mock-first (`web/README.md`): with no `VITE_API_BASE_URL` set, `npm.cmd run dev` serves every screen from the typed mock in `web/src/api/mock.ts`, which implements the full `contracts/openapi.yaml` shape. Numbers quoted in SAY below are the ones the live system is designed to show; if recording against mock mode instead of the live stack, re-read whatever the mock actually renders in that moment and say that number instead of the scripted one — never read a scripted number the screen doesn't show.
@@ -14,102 +33,88 @@ For a presenter who has never used the app. Follow it word-for-word. Total run t
 
 ---
 
+## Two cuts from one recording session
+
+The official brief (`Motorq_Hackathon_Problem_Statement.pdf` §13, `spec.md` §21) asks for a video of **5 minutes or less**. So record once, and cut two versions:
+
+| Cut | Length | Use |
+|---|---|---|
+| **Submission cut** | **<= 4:50** | What you upload. Beats marked **S**. |
+| **Extended walkthrough** | **~8:40** | Optional: a longer demo for judges who ask, a portfolio, or a live presentation. All beats. |
+
+If the submission form enforces the 5-minute rule, upload the submission cut. Do not upload the extended cut as the submission.
+
+## What the screens actually show (verified in a dry run, mock mode)
+
+Quote these, not the numbers in older drafts. If you see something different on the day, say what you see.
+
+- **Command Center:** Open critical alerts **15**, $ leaking today **$18,400**, At-risk vehicles **30,544 (30.5%)**, Savings opportunity / week **$52,300**, Freshness "~7s old", "ingest p95 1240 ms". Alert feed rows are status text only (not clickable, no Ack button; the only button is "Refresh feed"). The map card reads "MapLibre / Viewport points (zoom 10.0)".
+- **Copilot:** briefing says "5 actions could save **$18,400** this week". The chat reply to "Why is this VIN flagged?" is a fleet summary ("20 open critical alerts and $18,400 leaking today ... depot idling at the Peenya cluster"), not reason codes. **Reason codes are on Vehicle 360.** Approve on the top queue row (a `coach_driver` proposal, $3,071) removes it from Pending.
+- **Platform:** order is Mapping editor, Mapping versions, Data quality, then the dead-letter queue. The button is **Run preview**. There is **no approve/activate or replay button**, so narrate preview only. Preview also prints a mock "unknown_field" failure line; do not dwell on it.
+- **Compliance:** Verify chain returns "Chain OK - 200 entries". ERASE with any UUID shows "accepted - status received". Load preview shows "k=10 ... 12 aggregate rows". There is no `[erased]` replay screen in the UI.
+- **Vehicle 360:** open VIN **MLHD38JWYJFPY1CUT** (86.0% p(failure, 7d), Recommendation INSPECT, Expected value $3,432, reasons dtc_rate_7d, idle_share_30d, soc_min_7d). Alert-feed VIN suffixes do not open the right vehicle.
+- **Drivers:** open Driver 004 (score 50; harsh brake 1.8; idle share 0.14; "2.0x peer median - coach anticipation braking", "Idling 75% above peers").
+
 ## Beat-by-beat
 
-### Beat 1 — The problem in numbers (0:00–0:18, 18s)
-**GOAL:** Frame scale and the promise ("trustworthy in seconds") before showing any UI.
-**ON SCREEN:** Title card / architecture diagram (from solution-document or spec.md), not the app yet.
-**SAY:** "FleetSentinel ingests telemetry from 100,000 connected vehicles — about 8.6 terabytes of raw data a day — and turns it into decisions that are trustworthy within seconds, not hours."
-**DO:** Show a static slide with "100,000 vehicles" / "8.6 TB/day" / "<5s critical alerts" — no clicks.
-**CHECK:** Slide is legible, no app chrome visible yet.
+Times are submission cut (S) / extended cut (E). The presenter reads SAY; DO is what you click.
 
-### Beat 2 — Command Center: live map + KPIs (0:18–0:55, 37s)
-**GOAL:** Prove real-time scale and the UI.
-**ON SCREEN:** Command Center (`web/src/pages/CommandCenter.tsx`) — "Live vehicle map — Bengaluru" WebGL card, and the 5-tile KPI strip: "Open critical alerts", "$ leaking today", "At-risk vehicles", "Savings opportunity / week", "Freshness".
-**SAY:** "This is the Command Center: 100,000 vehicles live on Bengaluru roads. The KPI strip on top shows dollars leaking right now, savings opportunity for the week, and data freshness — this is p95 ingest-to-screen latency, not a static dashboard."
-**DO:** Navigate to `http://localhost:5173/` (Command Center is the default route). Let the map render fully before speaking. Point the cursor at the "Freshness" tile, then sweep across the KPI row left to right.
-**CHECK:** Map shows moving dots on real road geometry; all 5 KPI tiles show numbers, not `Loading…` or `Empty` states.
+### Beat 1 - The problem in numbers (S 0:00-0:20 / E 0:00-0:45) **S**
+**ON SCREEN:** a title slide or architecture diagram (from `docs/solution-document-final.md` or spec.md), no app yet.
+**SAY:** "FleetSentinel is a connected-vehicle intelligence platform: a hundred thousand mixed ICE and EV vehicles, one normalized telemetry pipeline, three questions: where are we losing money, what breaks next, and who is driving riskily. A guarded AI copilot turns the answers into approved, audited actions. Everything you see is synthetic data."
+**E adds:** "At one event a second that is 8.64 billion events a day; stored as Protobuf and Parquet it is roughly a fortieth of the raw JSON footprint."
 
-### Beat 3 — Trigger a tow alert (0:55–1:28, 33s)
-**GOAL:** Prove the critical-alert lane is under 5 seconds end-to-end, with a trace.
-**ON SCREEN:** Command Center "Live alert feed" card; then a Tempo/Jaeger trace view (or the equivalent trace screenshot in `docs/evidence/`) ingest→screen.
-**SAY:** "Now I'll trigger a tow scenario on one vehicle. Watch the alert feed — the critical lane processes this as a single event, not a batch window, so it lands in about one to two seconds." *(after it appears)* "And here's the trace: ingest, gateway, Kafka, processor, to this screen."
-**DO:** Run the simulator's fault trigger (`python -m fs_simulator.publish --dry-run --force-drift` is for OEM_D drift, not tow — if the stack exposes a tow-fault trigger script/endpoint, run that script here; otherwise use the seeded fixture: `python -m fs_simulator.seed --profile lite` already plants a tow incident in ground truth, so point at a known-flagged VIN in the alert feed instead of live-triggering one). Click the alert row that appears, then switch to the trace viewer tab.
-**CHECK:** Alert appears in the feed within the stated window; trace shows a continuous span from the ingest service through to the API.
-**NOTE:** No dedicated "trigger tow scenario" CLI flag was found in `simulator/src/fs_simulator/publish.py` (only `--force-drift` for OEM_D and `--control-file` for drift control) — flag this gap to whoever owns the simulator before recording; the beat may need to use a pre-seeded incident instead of a live trigger.
+### Beat 2 - Command Center (S 0:20-1:00 / E 0:45-2:00) **S**
+**DO:** open `/` (already logged in). Sweep the cursor across the five tiles, then the alert feed.
+**SAY:** "The Command Center: open critical alerts, dollars leaking today from idling, vehicles at elevated risk, and the savings opportunity for the week. The freshness tile shows how old the data is. [If recording from mock, say: this is recorded fixture data.] Critical alerts run on their own lane, designed to land in under five seconds."
+**E adds:** read the four tile numbers aloud, point at the map card ("the WebGL map over Bengaluru"), click **Refresh feed**.
+**Honest note:** do not claim "moving dots"; the map card shows a point count.
 
-### Beat 4 — Copilot: briefing, explain, approve, audit (1:28–2:12, 44s)
-**GOAL:** Prove the ML decision, agent guardrails, and the audit trail together.
-**ON SCREEN:** Copilot (`web/src/pages/Copilot.tsx`) — "Daily briefing" card, then the chat panel, then "Approval queue".
-**SAY:** "Each morning the copilot briefs the fleet manager: five actions worth acting on this week, worth about twenty thousand dollars in avoided breakdowns. I'll ask why one vehicle is flagged." *(after chat reply)* "It gives reason codes, not a black box. I'll approve the recommended action — that creates a work order, and every step is written to a hash-chained audit log."
-**DO:** Go to the Copilot screen. Point at the "Daily briefing" card first. Type into the chat input: "Why is this VIN flagged?" and submit (Button disabled until text entered). Scroll to "Approval queue", click **Approve** on the top row.
-**CHECK:** Briefing card shows a non-empty action count and a dollar figure (not `Loading…`); chat response includes reason codes / DTC explanation; approved row moves out of the "pending" filter.
+### Beat 3 - Live pipeline proof, terminal (S 1:00-1:35 / E 2:00-3:30) **S**
+The one beat that can be genuinely live. Use the pre-flight stack.
+**DO:** show the simulator terminal publishing, then `docker ps` (eight healthy containers), then processor log lines `priority_batch ... alerts: N`; optionally `docker exec fleetsentinel-postgres-1 psql -U postgres -d fleetsentinel -c "select count(*) from alert"` run twice to show it growing.
+**SAY:** "This is the real pipeline: simulated OEM connectors publish over mutual-TLS MQTT, the gateway deduplicates into Kafka, the normalizer maps four OEM formats to one schema, and the priority processor evaluates rules per event and writes alerts to Postgres with row-level security per tenant."
+**E adds:** switch `web/.env` to live per pre-flight and show the alert feed updating; show normalizer batch logs.
+**Do not claim** a measured end-to-end sub-5-second trace or a tow-specific trigger unless you measured it (see Flagged gaps).
 
-### Beat 5 — Live OEM onboarding, zero downtime (2:12–2:52, 40s)
-**GOAL:** Prove multi-OEM normalization and no-redeploy onboarding.
-**ON SCREEN:** Platform (`web/src/pages/Platform.tsx`) — "Dead-letter queue (sample)" card, then "Mapping editor + live preview", then "Data quality per OEM".
-**SAY:** "OEM_D just started streaming a format we've never seen. Instead of crashing or dropping data, it lands in the dead-letter queue while the copilot drafts a mapping for it. I preview the mapping, approve it, and the vehicles reappear — the DLQ gets replayed. No redeploy."
-**DO:** Trigger the drift: `python -m fs_simulator.publish --dry-run --force-drift` (or set `{"oem_d_drift": true}` in the control file at `./data/sim_control.json`, which `--control-file` reads). On the Platform screen, show the DLQ sample card, click **Preview** in the mapping editor, then approve the previewed version, then point at "Data quality per OEM" rising for OEM_D.
-**CHECK:** DLQ sample shows OEM_D rows before approval; after approval, OEM_D's row count/quality figure updates without a page reload or restart.
+### Beat 4 - Copilot (S 1:35-2:30 / E 3:30-5:00) **S**
+**DO:** `/copilot`. Point at the Daily briefing. Type "Why is this VIN flagged?" and send. Approve the top row in the Approval queue.
+**SAY:** "The morning briefing: five actions worth $18,400 this week. The copilot answers from tool results, and it can only propose actions; nothing executes until a human approves. I approve this coaching action and it leaves the pending queue."
+**E adds:** Vehicle 360 for `MLHD38JWYJFPY1CUT`: "here are the reason codes behind a flag: dtc rate, idle share, minimum state of charge; 86% failure probability in seven days, recommendation inspect." Then Drivers, Driver 004: "peer-relative scorecards with the levers that move the score."
+**Honest note:** do not say the approval appears in the audit log; the mock does not do that.
 
-### Beat 6 — Burst + broker kill, zero-loss reconciliation (2:52–3:28, 36s)
-**GOAL:** Prove throughput, availability, and idempotency.
-**ON SCREEN:** Command Center KPI strip (lag/throughput if shown) or terminal output from the chaos script; reconciliation report.
-**SAY:** "Now a three-times traffic burst, and I'll kill a Kafka broker mid-stream. Consumer lag spikes, then drains as replicas take over — and the reconciliation report at the end shows zero events lost."
-**DO:** Run `tests/chaos/kill-consumer.sh` (kills a consumer/broker per the chaos script) while a burst load is running via `tests/load/k6-api.js` (`k6 run tests/load/k6-api.js`). Show the terminal lag metric climbing then recovering, then open the reconciliation report output.
-**CHECK:** Lag metric visibly spikes then returns to baseline; reconciliation report's lost-event count reads 0.
-**NOTE:** `tests/chaos/kill-consumer.sh` kills a *consumer*, not a broker — the storyboard beat title says "kill a broker"; confirm which failure mode the script actually injects before claiming "broker kill" on camera, or rephrase SAY to "kill a consumer replica".
+### Beat 5 - OEM onboarding and schema drift (S 2:30-3:10 / E 5:00-6:15) **S**
+**DO:** `/platform`. Show the dead-letter queue sample (OEM_D rows), then the Mapping editor and **Run preview**, then Data quality per OEM (OEM_D flagged "drift").
+**SAY:** "When an OEM changes its payload we do not crash or silently drop data: records land in the dead-letter queue, drift is detected per OEM, and a new mapping is previewed against sample payloads before it goes live. Mappings are data, not code, so onboarding needs no redeploy."
+**Honest note:** the UI has no approve or replay button. Say "preview", not "approve and replay".
+**E adds:** terminal `uv run --frozen python -m fs_simulator.publish --force-drift`, then the normalizer log showing OEM_D failures.
 
-### Beat 7 — DuckDB over the lake, before/after optimization (3:28–3:58, 30s)
-**GOAL:** Prove batch analytics at scale and SQL optimization work.
-**ON SCREEN:** Terminal running the DuckDB query, then an EXPLAIN ANALYZE before/after pair.
-**SAY:** "Our data lake holds hundreds of millions of telemetry rows in Parquet. This query scans them with DuckDB in a few seconds. And here's one of four query optimizations we made — index and materialized-view changes that cut this query from hundreds of milliseconds down to single digits."
-**DO:** Run the lake query script against the seeded/full-profile lake (seed it beforehand with `python -m fs_simulator.seed --profile full` — this is the profile that builds the large lake, per `simulator/src/fs_simulator/seed.py`). Show its wall-clock output, then show one EXPLAIN ANALYZE pair side by side.
-**CHECK:** Query completes and prints a row count and elapsed time on screen; EXPLAIN ANALYZE shows a lower cost/time after the optimization.
-**NOTE:** Could not locate the specific "1B rows" DuckDB query script or the 4 EXPLAIN ANALYZE artifacts in this pass (spec.md §21 cites them, solution-document.md §9/§10 references `docs/evidence/` for load/chaos evidence but batch/DuckDB evidence location wasn't confirmed) — locate the actual script path (likely under `services/*/batch` or `ml/`) and the real row count/timing before finalizing SAY numbers; do not say "1 billion" unless the lake actually has that many rows.
+### Beat 6 - Resilience and scale (S 3:10-3:40 / E 6:15-7:15)
+Show only what you have measured. **S:** one spoken sentence over the architecture diagram: "Priority and bulk lanes are separate consumer groups, so a bulk backlog cannot delay critical alerts; the Helm chart and Terraform reproduce the stack in the cloud."
+**E adds:** `tests/chaos/kill-consumer.sh` output **only if you ran it**. It kills a consumer, not a broker, so say "consumer".
 
-### Beat 8 — Erasure and k-anonymous export (3:58–4:23, 25s)
-**GOAL:** Prove privacy/compliance guarantees are real, not claimed.
-**ON SCREEN:** Compliance (`web/src/pages/Compliance.tsx`) — "DSR request (erasure / access)" card, then "Privacy export (k-anonymity)" card.
-**SAY:** "For a right-to-erasure request, we destroy the encryption key for that driver — replaying their old data now returns 'erased', not the original value. And exports for analytics are k-anonymous by construction."
-**DO:** On Compliance, enter a driver ID in the DSR form, select the "erasure" kind button, submit. Then click **Load preview** on "Privacy export (k-anonymity)".
-**CHECK:** DSR submission confirms; replaying/viewing that driver's prior record shows `[erased]`; the k-anonymity preview loads a non-empty, aggregated (not per-driver) table.
+### Beat 7 - Data lake and SQL (E 7:15-7:45 only)
+Only with real numbers from `docs/evidence/`. Otherwise skip. Do not say "billion rows" unless the lake has them.
 
-### Beat 9 — Audit chain + engineering rigour (4:23–4:40, 17s)
-**GOAL:** Prove audit integrity and engineering evidence.
-**ON SCREEN:** Compliance "Audit log" card with **Verify chain** button; then CI badge / coverage report / scan output.
-**SAY:** "Every action here, human or agent, is in a hash-chained audit log — verified right now with one click. Our CI is green: four hundred plus tests, an eighty percent coverage gate, and clean security scans."
-**DO:** Click **Verify chain** on the Compliance "Audit log" card. Switch to GitHub Actions / CI dashboard tab showing the green run and coverage %.
-**CHECK:** "Verify chain" returns a success state (not a tamper warning); CI tab shows the latest run green with the coverage number visible.
+### Beat 8 - Privacy: erasure and k-anonymity (S 3:40-4:15 / E 7:45-8:10) **S**
+**DO:** `/compliance`. Type any UUID, click **ERASE**, **Submit DSR**. Then **Load preview** on Privacy export.
+**SAY:** "A right-to-erasure request. Driver identifiers are encrypted per driver, so erasure destroys the key. Exports for analytics are k-anonymous: small cells are suppressed, with no VINs or driver identifiers."
 
-### Beat 10 — Live URL + architecture, close (4:40–4:45, 5s + :15 buffer)
-**GOAL:** Prove it's deployable, not just local.
-**ON SCREEN:** Browser address bar showing the live cloud URL (Terraform VM, or the Cloudflare Tunnel fallback per `docs/demo-url-tunnel.md`), overlaid or followed by the architecture diagram.
-**SAY:** "This is running live right now at this URL — same stack, deployable to any cloud with no code change. Thanks for watching."
-**DO:** Switch to a tab already pointed at the live URL (pre-loaded before recording, do not navigate live) and hold for 3–4 seconds, then cut to the architecture diagram slide.
-**CHECK:** The live URL tab is already loaded and responsive before this beat starts — never load it for the first time on camera.
+### Beat 9 - Audit chain and close (S 4:15-4:50 / E 8:10-8:40) **S**
+**DO:** click **Verify chain** ("Chain OK - 200 entries"). Then cut to the repo/CI slide.
+**SAY:** "Every action is in a hash-chained audit log, verified with one click. Behind this: a STRIDE threat model, tenant isolation tested against a real Postgres, and 670 tests at the last full run. Motorq is an industry reference only; this is an independent academic exercise. Thanks for watching."
+**Do not** show a live cloud URL unless one is actually deployed.
 
----
+## Timing
 
-## Time budget summary
-
-| Beat | Title | Seconds | Cumulative |
-|---|---|---|---|
-| 1 | The problem in numbers | 18 | 0:18 |
-| 2 | Command Center: live map + KPIs | 37 | 0:55 |
-| 3 | Trigger a tow alert | 33 | 1:28 |
-| 4 | Copilot: briefing, explain, approve, audit | 44 | 2:12 |
-| 5 | Live OEM onboarding, zero downtime | 40 | 2:52 |
-| 6 | Burst + broker kill, zero-loss reconciliation | 36 | 3:28 |
-| 7 | DuckDB over the lake, before/after optimization | 30 | 3:58 |
-| 8 | Erasure and k-anonymous export | 25 | 4:23 |
-| 9 | Audit chain + engineering rigour | 17 | 4:40 |
-| 10 | Live URL + architecture, close | 5 | 4:45 |
-| — | Buffer | 15 | **5:00** |
+| Cut | Beats | Total |
+|---|---|---|
+| Submission (S) | 1, 2, 3, 4, 5, 6 (one sentence), 8, 9 | 4:50, keep a 10 s margin under 5:00 |
+| Extended (E) | 1 to 9 | about 8:40 |
 
 ## Flagged gaps (could not confirm against current code in this pass)
 
 - **Beat 3 (tow trigger):** no dedicated CLI/API trigger for a tow-specific scenario was found in `simulator/src/fs_simulator/publish.py` — only generic drift/force-drift controls. Use a pre-seeded ground-truth incident and a known VIN instead of a live trigger, or confirm with whoever owns the simulator that such a trigger exists.
 - **Beat 6 ("kill a broker"):** `tests/chaos/kill-consumer.sh` name suggests it kills a consumer, not a Kafka broker. Verify the actual failure mode before claiming "broker kill" on camera.
 - **Beat 7 (1B-row DuckDB query + 4 EXPLAIN ANALYZE pairs):** script location and actual row count not confirmed in this pass. `simulator/src/fs_simulator/seed.py --profile full` is the seed profile most likely to build the large lake, but the exact row count and the EXPLAIN ANALYZE evidence files need to be located and their real numbers substituted before recording — do not say "1 billion" unless verified.
-- **`docs/PROGRESS.md`** (last updated 2026-09-29) still lists milestones M3–M6 (API/auth/copilot real, feature freeze, evidence, demo video) as NOT STARTED/PARTIAL, while `docs/solution-document.md` §9–§13 describes a more complete state (403+ tests, STRIDE, crypto-shredding, k6/chaos scripts, live URL). These two documents disagree on current readiness — confirm actual current state before the recording session, since this script assumes the solution-document.md state is current.
+- **Readiness (resolved 2026-10-01):** `docs/PROGRESS.md`, `docs/BUGS.md` (B-030..B-032) and `docs/solution-document-final.md` §13 now agree: ingestion and alerts are live, the KPI/briefing/driver screens are not (use mock mode for them), the cloud URL and load/chaos evidence runs are unconfirmed. Do not claim anything the pre-flight did not show.

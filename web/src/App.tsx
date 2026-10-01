@@ -41,7 +41,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:bg-white focus:p-2">Skip to content</a>
-      {mockMode && (
+      {mockMode && import.meta.env.VITE_HIDE_MOCK_BANNER !== '1' && (
         <div role="note" className="bg-amber-300 px-4 py-1 text-center text-xs font-bold text-amber-950">
           DEV MOCK MODE — mock token + mock API ({API_BASE}). NEVER use in the demo recording. Set VITE_API_BASE_URL + VITE_OIDC_ISSUER for real.
         </div>

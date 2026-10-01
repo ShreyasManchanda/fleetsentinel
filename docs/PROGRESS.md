@@ -1,7 +1,7 @@
 # PROGRESS: living implementation plan and status
 
 > **Living document.** Update it in the same change as the work it describes (rules in `CLAUDE.md`). Newest status first inside each section.
-> Last updated: **2026-10-01 (submission day)** by the integrator (audit batch 2 done: 670 green, lint clean; dry run live).
+> Last updated: **2026-10-01 (submission day, evening)** by the integrator: live stack run end to end (alerts reach the UI), processor wiring fixed (B-030), Redis bridge added (B-031); KPI/briefing/driver screens still need batch jobs (B-032). Demo plan: mock-mode UI + live terminal beats.
 
 ## Clock
 
@@ -24,7 +24,7 @@
 | M3 | Alerts + API + auth + basic copilot real | Wed 30 Sep midday | NOT STARTED |
 | M4 | Feature freeze (all T0 + agreed T1) | Wed 30 Sep 22:00 | NOT STARTED |
 | M5 | Evidence: load/burst/soak/chaos on cloud VM, reconciliation, 4 EXPLAIN cases, evals | Thu 1 Oct AM | NOT STARTED |
-| M6 | Solution Document, demo video (<=5 min), README, tag `v1.0-submission` | Thu 1 Oct by 18:00 | NOT STARTED |
+| M6 | Solution Document, demo video (<=5 min), README, tag `v1.0-submission` | Thu 1 Oct by 18:00 | IN PROGRESS (solution doc final written; demo runbook updated for mock-mode UI + live terminal beats; recording not done) |
 
 ## Stream status (details: `docs/streams/STREAMS.md`)
 

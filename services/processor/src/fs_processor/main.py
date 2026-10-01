@@ -27,11 +27,40 @@ def configure_logging() -> None:
     )
 
 
+def _tenant_resolver(pg_dsn: str):
+    """VIN -> tenant_id from the vehicle table (fs_worker bypasses RLS); cached. Unknown VINs fall back to 'unknown'."""
+    import psycopg
+
+    conn = psycopg.connect(pg_dsn, autocommit=True)
+    cache: dict[str, str] = {}
+
+    def resolve(vin: str) -> str:
+        t = cache.get(vin)
+        if t is None:
+            row = conn.execute("SELECT tenant_id::text FROM vehicle WHERE vin = %s", (vin,)).fetchone()
+            t = cache[vin] = row[0] if row else "unknown"
+        return t
+
+    return resolve
+
+
+def _commit(consumer) -> None:
+    from confluent_kafka import KafkaError, KafkaException
+
+    try:
+        consumer.commit(asynchronous=False)
+    except KafkaException as e:
+        if e.args[0].code() != KafkaError._NO_OFFSET:  # noqa: SLF001 - nothing consumed yet on this assignment
+            raise
+
+
 def _alert_rows(alerts: list[OutMsg]) -> list[dict]:
     rows = []
     for m in alerts:
         a = alert_pb2.Alert()
         a.ParseFromString(m.value)
+        if a.tenant_id == "unknown":  # VIN not in the vehicle table: cannot persist (tenant_id is a UUID FK)
+            continue
         rule = alert_pb2.RuleCode.Name(a.rule)
         if rule.startswith("RULE_"):
             rule = rule[len("RULE_"):]
@@ -47,7 +76,7 @@ def _run_bulk(kafka: str, redis_url: str, pg_dsn: str, mongo_uri: str) -> None:
     sink, alerts = KafkaSink(kafka), PostgresAlertStore(pg_dsn)
     ckpt = RedisCheckpointStore(redis_url)
     twins = MongoTwinStore(mongo_uri)
-    svc = BulkService(partition=0, config=BulkConfig())
+    svc = BulkService(partition=0, config=BulkConfig(), tenant_of=_tenant_resolver(pg_dsn))
     runner = BulkRunner(svc, ckpt, _Committer(consumer))
     runner.restore()
     log.info("bulk_loop_start")
@@ -75,7 +104,7 @@ def _run_bulk(kafka: str, redis_url: str, pg_dsn: str, mongo_uri: str) -> None:
             ckpt.put_state(s.key.decode(), s.value)
         if res.states:
             twins.upsert(s.key.decode(), {"vin": s.key.decode()})
-        consumer.commit(asynchronous=False)
+        _commit(consumer)
 
 
 class _Committer:
@@ -90,7 +119,7 @@ def _run_priority(kafka: str, pg_dsn: str) -> None:
     log = structlog.get_logger("fs_processor.priority")
     consumer = make_consumer(kafka, "processor-priority", ["telemetry.priority.v1"])
     sink, alerts = KafkaSink(kafka), PostgresAlertStore(pg_dsn)
-    svc = PriorityService(config=PriorityConfig())
+    svc = PriorityService(config=PriorityConfig(), tenant_of=_tenant_resolver(pg_dsn))
     log.info("priority_loop_start")
     while True:
         batch = consumer.consume(num_messages=200, timeout=1.0)
@@ -112,7 +141,7 @@ def _run_priority(kafka: str, pg_dsn: str) -> None:
             sink.produce(o)
         sink.flush()
         alerts.insert_alerts(_alert_rows([o for o in out if o.topic == "alerts.v1"]))
-        consumer.commit(asynchronous=False)
+        _commit(consumer)
 
 
 def main() -> None:

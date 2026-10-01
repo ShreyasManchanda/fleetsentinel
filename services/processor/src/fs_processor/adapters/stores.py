@@ -59,13 +59,13 @@ class PostgresAlertStore:
                 cur.execute(self._tenant_sql, (r["tenant_id"],))
                 cur.execute(
                     """INSERT INTO alert
-                       (id, tenant_id, vehicle_id, rule_id, severity, status, occurrences,
+                       (id, tenant_id, vehicle_id, rule_id, rule_code, severity, status, occurrences,
                         impact_at_creation, opened_at)
                        VALUES (%s, %s, (SELECT id FROM vehicle WHERE vin = %s),
-                               (SELECT id FROM alert_rule WHERE code = %s),
-                               %s, 'open', 1, %s, now())
+                               (SELECT id FROM alert_rule WHERE code = %s AND tenant_id = %s LIMIT 1),
+                               %s, %s, 'open', 1, %s, now())
                        ON CONFLICT (id) DO NOTHING""",
-                    (r["alert_id"], r["tenant_id"], r["vin"], r["rule"], r["severity"],
+                    (r["alert_id"], r["tenant_id"], r["vin"], r["rule"], r["tenant_id"], r["rule"], r["severity"],
                      r.get("impact_usd", 0)),
                 )
                 n += cur.rowcount
