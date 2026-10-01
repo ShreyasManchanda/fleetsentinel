@@ -23,7 +23,7 @@
 | M2 | Thin slice: simulator -> gateway -> Kafka -> normalizer -> processor -> Redis -> live vehicles visible | Tue 29 Sep EOD | PARTIAL (broker-free path DONE: `tests/integration/test_thin_slice.py` — OEM payload bytes → normalize → priority TOW alert + bulk states + lake Parquet object, 2 tests green. Live-broker run needs Redpanda+Mosquitto+Redis; RAM-gated) |
 | M3 | Alerts + API + auth + basic copilot real | Wed 30 Sep midday | NOT STARTED |
 | M4 | Feature freeze (all T0 + agreed T1) | Wed 30 Sep 22:00 | NOT STARTED |
-| M5 | Evidence: load/burst/soak/chaos on cloud VM, reconciliation, 4 EXPLAIN cases, evals | Thu 1 Oct AM | NOT STARTED |
+| M5 | Evidence: load/burst/soak/chaos on cloud VM, reconciliation, 4 EXPLAIN cases, evals | Thu 1 Oct AM | PARTIAL (4 EXPLAIN cases, 665-test run at 90% coverage and live-Postgres security tests saved in docs/evidence; load/soak/chaos/scans NOT run) |
 | M6 | Solution Document, demo video (<=5 min), README, tag `v1.0-submission` | Thu 1 Oct by 18:00 | IN PROGRESS (solution doc final written; demo runbook updated for mock-mode UI + live terminal beats; recording not done) |
 
 ## Stream status (details: `docs/streams/STREAMS.md`)

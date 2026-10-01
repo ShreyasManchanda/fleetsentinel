@@ -102,7 +102,7 @@ Critically, the copilot's tools are read-only except for one: `propose_action`, 
 
 ## 10. Testing evidence
 
-At the last full run (2026-10-01) the suite stood at 670 green tests with lint clean (recorded in `docs/CHAT_LOG.md`; a collection-only run during the final audit lists 671 tests), spanning unit tests, live-Postgres integration tests, contract tests, BDD scenarios, and the agent evaluation harness, with a CI coverage gate of at least 80% applied to the core packages of every service, not only the algorithm library. `docs/evidence/` currently holds only the four SQL `EXPLAIN ANALYZE` records. Load, burst, soak and chaos runs were **planned but not executed in this submission** (`docs/PROGRESS.md` M5), so no throughput or chaos numbers are claimed.
+In the final run (2026-10-02) the suite of 671 tests gave 665 passed and 6 skipped with Docker stopped, at 90% line+branch coverage; the 6 skipped tests need a live Postgres and all passed when it was started (evidence in `docs/evidence/tests/`), spanning unit tests, live-Postgres integration tests, contract tests, BDD scenarios, and the agent evaluation harness, with a CI coverage gate of at least 80% applied to the core packages of every service, not only the algorithm library. `docs/evidence/` currently holds only the four SQL `EXPLAIN ANALYZE` records. Load, burst, soak and chaos runs were **planned but not executed in this submission** (`docs/PROGRESS.md` M5), so no throughput or chaos numbers are claimed.
 
 ## 11. Security and compliance
 

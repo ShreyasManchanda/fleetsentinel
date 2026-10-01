@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -70,6 +71,9 @@ def main(argv: list[str] | None = None) -> int:
     from .seed import configure_logging
 
     configure_logging()
+    if sys.platform == "win32":
+        # aiomqtt needs add_writer: ProactorEventLoop raises NotImplementedError (B-027).
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     print(json.dumps(asyncio.run(amain(build_parser().parse_args(argv))), indent=2, default=str))
     return 0
 

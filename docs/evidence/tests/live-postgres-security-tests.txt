@@ -1,0 +1,19 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.6, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Shreyas\Desktop\stephackathon\.venv\Scripts\python.exe
+hypothesis profile 'default'
+rootdir: C:\Users\Shreyas\Desktop\stephackathon
+configfile: pyproject.toml
+plugins: anyio-4.15.1, Faker-40.39.0, hypothesis-6.168.3, langsmith-0.14.1, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 8 items
+
+tests/integration/test_pg_security.py::test_bola_cross_tenant_vehicle_and_fleet_invisible PASSED [ 12%]
+tests/integration/test_pg_security.py::test_telemetry_base_table_denied_but_view_allowed PASSED [ 25%]
+tests/integration/test_pg_security.py::test_audit_chain_verifies_then_detects_tamper PASSED [ 37%]
+tests/integration/test_pg_security.py::test_erasure_replay_renders_erased_marker PASSED [ 50%]
+tests/bdd/test_acceptance_gaps.py::test_bdd_schema_drift_oem_b_unknown_code_to_dlq PASSED [ 62%]
+tests/bdd/test_acceptance_gaps.py::test_bdd_tow_alert_id_deterministic_across_replays PASSED [ 75%]
+tests/bdd/test_acceptance_gaps.py::test_bdd_briefing_ranked_descending_by_impact PASSED [ 87%]
+tests/bdd/test_acceptance_gaps.py::test_bdd_cross_tenant_vin_lookup_invisible PASSED [100%]
+
+============================== 8 passed in 1.42s ==============================

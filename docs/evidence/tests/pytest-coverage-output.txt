@@ -1,0 +1,170 @@
+........................................................................ [ 10%]
+........................................................................ [ 21%]
+........................................................................ [ 32%]
+........................................................................ [ 42%]
+........................................................................ [ 53%]
+........................................................................ [ 64%]
+........................................................................ [ 75%]
+........................................................................ [ 85%]
+...................................................s......s.....ssss.... [ 96%]
+.......................                                                  [100%]
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.12.6-final-0 _______________
+
+Name                                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------------------------------------
+libs\fscore\src\fscore\__init__.py                                        0      0      0      0   100%
+libs\fscore\src\fscore\algorithms\__init__.py                            12      0      0      0   100%
+libs\fscore\src\fscore\algorithms\antireplay.py                          82      0     24      0   100%
+libs\fscore\src\fscore\algorithms\geo.py                                  9      0      0      0   100%
+libs\fscore\src\fscore\algorithms\geohash.py                             76      1     38      2    97%   94, 96->84
+libs\fscore\src\fscore\algorithms\graph.py                               98      3     38      6    93%   45, 46->48, 49->exit, 54, 109, 145->147
+libs\fscore\src\fscore\algorithms\gridgraph.py                           31      0     12      0   100%
+libs\fscore\src\fscore\algorithms\idling.py                              42      0      8      0   100%
+libs\fscore\src\fscore\algorithms\pelt.py                                86      1     30      1    98%   118
+libs\fscore\src\fscore\algorithms\timing_wheel.py                       131      1     64      1    99%   123
+libs\fscore\src\fscore\algorithms\trips.py                              156      0     26      0   100%
+libs\fscore\src\fscore\algorithms\unionfind.py                           44      0     14      0   100%
+libs\fscore\src\fscore\algorithms\windows.py                             45      0      8      0   100%
+libs\fscore\src\fscore\contracts.py                                      41      0      2      0   100%
+libs\fscore\src\fscore\crypto.py                                        175      0     40      0   100%
+libs\fscore\src\fscore\dtc.py                                            38      0     10      0   100%
+libs\fscore\src\fscore\hashing.py                                        33      0      8      0   100%
+libs\fscore\src\fscore\mapping_engine.py                                244      1    106      2    99%   88, 144->177
+libs\fscore\src\fscore\mapping_fast.py                                  324     20    164     12    93%   67, 74, 95-96, 102, 104, 139, 172->175, 252, 259, 267, 310-312, 317-319, 354-355, 357-358
+libs\fscore\src\fscore\sketches\__init__.py                               4      0      0      0   100%
+libs\fscore\src\fscore\sketches\bloom.py                                 51      0     10      0   100%
+libs\fscore\src\fscore\sketches\countmin.py                              81      0     20      0   100%
+libs\fscore\src\fscore\sketches\hll.py                                   51      0     14      0   100%
+libs\fscore\src\fscore\vin.py                                            26      0      4      0   100%
+ml\src\fs_ml\__init__.py                                                  0      0      0      0   100%
+ml\src\fs_ml\evaluate.py                                                 62      0     10      0   100%
+ml\src\fs_ml\features.py                                                184      4     34      4    96%   48, 56, 139, 145
+ml\src\fs_ml\safety.py                                                   62      0      6      0   100%
+ml\src\fs_ml\signatures.py                                               81      2     12      2    96%   27, 35
+ml\src\fs_ml\train.py                                                    90      9     10      2    89%   65->67, 168-175, 179
+services\agent\src\fs_agent\__init__.py                                   0      0      0      0   100%
+services\agent\src\fs_agent\briefing.py                                  27      0      8      0   100%
+services\agent\src\fs_agent\evals.py                                     55      0      4      0   100%
+services\agent\src\fs_agent\graph.py                                     77      1     18      3    96%   50, 57->46, 61->46
+services\agent\src\fs_agent\guardrails.py                                33      0      4      0   100%
+services\agent\src\fs_agent\service.py                                   33      0      2      0   100%
+services\agent\src\fs_agent\tools.py                                     39      0      6      0   100%
+services\api\src\fs_api\__init__.py                                       0      0      0      0   100%
+services\api\src\fs_api\api\__init__.py                                   0      0      0      0   100%
+services\api\src\fs_api\api\app.py                                       34      9      8      0    64%   45-55
+services\api\src\fs_api\api\context.py                                   94      1     18      1    98%   57, 76->78
+services\api\src\fs_api\api\idempotency.py                               35      0      8      0   100%
+services\api\src\fs_api\api\middleware.py                               102     18     30     10    77%   42-43, 54->58, 57, 66->65, 79-80, 84-86, 89, 91-93, 95-96, 103-105, 140-141, 143->exit
+services\api\src\fs_api\api\models.py                                   308      0      0      0   100%
+services\api\src\fs_api\api\routers\__init__.py                           0      0      0      0   100%
+services\api\src\fs_api\api\routers\_common.py                           17      0      2      0   100%
+services\api\src\fs_api\api\routers\agent.py                             62     20      0      0    68%   34, 40-46, 51-55, 60-67, 73
+services\api\src\fs_api\api\routers\alerts.py                            38     14      4      0    57%   30-35, 42-43, 48-51, 56-59
+services\api\src\fs_api\api\routers\compliance.py                        32      1      0      0    97%   49
+services\api\src\fs_api\api\routers\drivers.py                           17      2      0      0    88%   22, 28
+services\api\src\fs_api\api\routers\fleet.py                             21      3      0      0    86%   27-28, 34
+services\api\src\fs_api\api\routers\ops.py                               28     14      2      0    47%   22-37, 42
+services\api\src\fs_api\api\routers\platform.py                          53     22      2      0    56%   39, 44-45, 50-53, 59-62, 67-73, 79-80, 85-89
+services\api\src\fs_api\api\routers\reports.py                           17      0      0      0   100%
+services\api\src\fs_api\api\routers\vehicles.py                          25      3      0      0    88%   36, 41, 46
+services\api\src\fs_api\api\routers\ws.py                               127    110     34      0    11%   22-28, 33-139, 146-148
+services\api\src\fs_api\application\__init__.py                           0      0      0      0   100%
+services\api\src\fs_api\application\actions.py                           48     16     18      6    64%   19-28, 45, 47, 52, 60, 64, 67
+services\api\src\fs_api\application\alerts.py                            44     35     14      0    16%   12-18, 23-33, 37-41, 46-58
+services\api\src\fs_api\application\common.py                            61      0     24      0   100%
+services\api\src\fs_api\application\compliance.py                       133     31     24      5    75%   27-28, 43-44, 76, 80-85, 92, 110-119, 129-130, 137, 165-169, 192
+services\api\src\fs_api\application\drivers.py                           58     44     12      0    20%   18-26, 30-33, 40-51, 56-65, 70-80
+services\api\src\fs_api\application\mappings.py                          69     53     20      0    18%   16-26, 30, 41-52, 56-61, 65-76, 82-92
+services\api\src\fs_api\application\reports.py                           45      2     20      3    92%   30->37, 41, 43
+services\api\src\fs_api\application\stream.py                            86     64     26      0    20%   22-25, 29-31, 36-43, 47, 50, 54-74, 78-107
+services\api\src\fs_api\application\vehicles.py                         162     93     48      4    41%   39-41, 65, 76, 89-93, 103-125, 129, 139-151, 155-162, 166-176, 180-194, 208-221, 226-232
+services\api\src\fs_api\config.py                                        50      2      0      0    96%   69, 74
+services\api\src\fs_api\container.py                                     31      0      0      0   100%
+services\api\src\fs_api\domain\__init__.py                                0      0      0      0   100%
+services\api\src\fs_api\domain\audit.py                                  72      1      4      0    99%   115
+services\api\src\fs_api\domain\breaker.py                                80      0     20      0   100%
+services\api\src\fs_api\domain\geo.py                                    77      0     30      0   100%
+services\api\src\fs_api\domain\pagination.py                             41      0      8      0   100%
+services\api\src\fs_api\domain\privacy.py                                27      0      6      0   100%
+services\api\src\fs_api\domain\ratelimit.py                              62      1     10      1    97%   43
+services\api\src\fs_api\domain\roles.py                                  71      0     20      0   100%
+services\api\src\fs_api\errors.py                                        64      4      8      2    92%   64, 71, 89->91, 104-105
+services\api\src\fs_api\infra_errors.py                                  31      1      2      1    94%   55
+services\api\src\fs_api\metrics.py                                       17      1      0      0    94%   24
+services\api\src\fs_api\ports.py                                         39      0      0      0   100%
+services\api\src\fs_api\security\__init__.py                              0      0      0      0   100%
+services\api\src\fs_api\security\jwt_auth.py                             90     11     16      3    85%   31, 50, 76-78, 89-90, 95, 100-101, 122
+services\batch\src\fs_batch\__init__.py                                   0      0      0      0   100%
+services\batch\src\fs_batch\jobs\__init__.py                              0      0      0      0   100%
+services\batch\src\fs_batch\jobs\features.py                             23      0      2      0   100%
+services\batch\src\fs_batch\jobs\recompute.py                            35      0      8      0   100%
+services\batch\src\fs_batch\jobs\reconcile.py                            53      0     12      0   100%
+services\batch\src\fs_batch\jobs\reports.py                              23      0      0      0   100%
+services\gateway\src\fs_gateway\__init__.py                               0      0      0      0   100%
+services\gateway\src\fs_gateway\application\__init__.py                   0      0      0      0   100%
+services\gateway\src\fs_gateway\application\pipeline.py                 194      4     72      5    97%   97, 127->130, 155, 217, 239
+services\gateway\src\fs_gateway\domain\__init__.py                        0      0      0      0   100%
+services\gateway\src\fs_gateway\domain\dedup.py                          53      0     18      0   100%
+services\gateway\src\fs_gateway\domain\envelope.py                       38      0     10      0   100%
+services\gateway\src\fs_gateway\domain\spill.py                         170     12     54      9    91%   82->exit, 113->exit, 129, 133-134, 136->138, 169-170, 191-197, 202
+services\gateway\src\fs_gateway\metrics.py                               19      0      0      0   100%
+services\gateway\src\fs_gateway\settings.py                              28      0      0      0   100%
+services\lake_sink\src\fs_lake_sink\__init__.py                           0      0      0      0   100%
+services\lake_sink\src\fs_lake_sink\application\__init__.py               0      0      0      0   100%
+services\lake_sink\src\fs_lake_sink\application\sink.py                  81      1     18      2    97%   81, 106->104
+services\lake_sink\src\fs_lake_sink\domain\__init__.py                    0      0      0      0   100%
+services\lake_sink\src\fs_lake_sink\domain\batch.py                      16      0      0      0   100%
+services\lake_sink\src\fs_lake_sink\domain\naming.py                     12      0      0      0   100%
+services\lake_sink\src\fs_lake_sink\metrics.py                           11      0      0      0   100%
+services\lake_sink\src\fs_lake_sink\models.py                            11      0      0      0   100%
+services\normalizer\src\fs_normalizer\__init__.py                         0      0      0      0   100%
+services\normalizer\src\fs_normalizer\core.py                           149      2     46      2    98%   36->41, 85-86, 132->134
+services\normalizer\src\fs_normalizer\drift.py                           70      0     20      0   100%
+services\normalizer\src\fs_normalizer\encryptor.py                       62      0     18      0   100%
+services\normalizer\src\fs_normalizer\metrics.py                         15      0      0      0   100%
+services\normalizer\src\fs_normalizer\models.py                          17      0      0      0   100%
+services\normalizer\src\fs_normalizer\registry.py                        67      0     18      1    99%   72->70
+services\normalizer\src\fs_normalizer\runner.py                          37      0     12      0   100%
+services\normalizer\src\fs_normalizer\settings.py                        28      0      0      0   100%
+services\processor\src\fs_processor\__init__.py                           0      0      0      0   100%
+services\processor\src\fs_processor\application\__init__.py               0      0      0      0   100%
+services\processor\src\fs_processor\application\bulk_service.py         263      5     60      2    98%   240, 347, 350, 357, 370
+services\processor\src\fs_processor\application\checkpoint.py            23      0      4      2    93%   24->26, 34->36
+services\processor\src\fs_processor\application\priority_service.py      78      0     14      1    99%   86->88
+services\processor\src\fs_processor\domain\__init__.py                    0      0      0      0   100%
+services\processor\src\fs_processor\domain\bulk.py                       52      6     28      3    89%   22, 42, 69, 80-82
+services\processor\src\fs_processor\domain\geofence.py                   28      1     10      1    95%   33
+services\processor\src\fs_processor\domain\lifecycle.py                  52      0      8      0   100%
+services\processor\src\fs_processor\domain\rules.py                      55      0     16      0   100%
+services\processor\src\fs_processor\domain\scoring.py                    47      0      6      0   100%
+services\processor\src\fs_processor\metrics.py                           16      0      0      0   100%
+services\processor\src\fs_processor\models.py                            17      0      0      0   100%
+simulator\src\fs_simulator\__init__.py                                    0      0      0      0   100%
+simulator\src\fs_simulator\behaviour.py                                 114      0      4      0   100%
+simulator\src\fs_simulator\constants.py                                  30      2      4      1    91%   76, 84
+simulator\src\fs_simulator\crypto.py                                     69      3     18      3    93%   82, 85, 108
+simulator\src\fs_simulator\dynamics.py                                  185      0     32      2    99%   49->56, 153->156
+simulator\src\fs_simulator\encoders.py                                   94      0     20      1    99%   90->92
+simulator\src\fs_simulator\faults.py                                    169      2     56     10    95%   45, 93->95, 100->102, 110->112, 118->120, 127->129, 135->137, 144, 150->exit, 186->188
+simulator\src\fs_simulator\features.py                                   74      0     10      1    99%   67->76
+simulator\src\fs_simulator\fleet.py                                     239      8     46      4    96%   113, 116-118, 139, 182, 263, 280
+simulator\src\fs_simulator\groundtruth.py                                82     10      8      2    87%   42, 78-81, 116, 120-123
+simulator\src\fs_simulator\lake.py                                       54     28     10      0    41%   29, 51-53, 58-62, 66-84
+simulator\src\fs_simulator\noise.py                                      58      1      6      0    98%   19
+simulator\src\fs_simulator\publisher.py                                 192      6     52      6    94%   105, 169, 181, 213->216, 235->237, 238-240
+simulator\src\fs_simulator\routes.py                                     87      1      8      0    99%   36
+simulator\src\fs_simulator\wear.py                                       31      0      0      0   100%
+-----------------------------------------------------------------------------------------------------------------
+TOTAL                                                                  8412    711   1920    129    90%
+Coverage HTML written to dir docs/evidence/tests/coverage_html
+Coverage XML written to file docs/evidence/tests/coverage.xml
+Required test coverage of 80.0% reached. Total coverage: 90.21%
+=========================== short test summary info ===========================
+SKIPPED [1] tests\bdd\test_acceptance.py:48: live Postgres (fs-pg) not running
+SKIPPED [1] tests\bdd\test_acceptance_gaps.py:96: live Postgres (fs-pg) not running
+SKIPPED [1] tests\integration\test_pg_security.py:69: live Postgres (fs-pg) not running
+SKIPPED [1] tests\integration\test_pg_security.py:109: live Postgres (fs-pg) not running
+SKIPPED [1] tests\integration\test_pg_security.py:122: live Postgres (fs-pg) not running
+SKIPPED [1] tests\integration\test_pg_security.py:145: live Postgres (fs-pg) not running
+665 passed, 6 skipped in 136.13s (0:02:16)

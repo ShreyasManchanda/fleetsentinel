@@ -102,7 +102,7 @@ Only with real numbers from `docs/evidence/`. Otherwise skip. Do not say "billio
 
 ### Beat 9 - Audit chain and close (S 4:15-4:50 / E 8:10-8:40) **S**
 **DO:** click **Verify chain** ("Chain OK - 200 entries"). Then cut to the repo/CI slide.
-**SAY:** "Every action is in a hash-chained audit log, verified with one click. Behind this: a STRIDE threat model, tenant isolation tested against a real Postgres, and 670 tests at the last full run. Motorq is an industry reference only; this is an independent academic exercise. Thanks for watching."
+**SAY:** "Every action is in a hash-chained audit log, verified with one click. Behind this: a STRIDE threat model, tenant isolation tested against a real Postgres, and 671 tests at 90% coverage. Motorq is an industry reference only; this is an independent academic exercise. Thanks for watching."
 **Do not** show a live cloud URL unless one is actually deployed.
 
 ## Timing

@@ -70,7 +70,7 @@ Rules briefing works with no LLM key. Eval harness: 5 golden + 4 red-team (stub 
 | Security | STRIDE (`docs/security/stride.md`), Semgrep/Trivy/gitleaks, BOLA tests on live PG |
 
 ## 10. Testing evidence
-670 tests green (last full run, 2026-10-01) (unit, live-PG integration, contracts, BDD, evals). Coverage gate ≥80% in CI.
+671 tests (665 passed + 6 live-Postgres tests that pass when Postgres is up), 90% coverage (run 2026-10-02) (unit, live-PG integration, contracts, BDD, evals). Coverage gate ≥80% in CI.
 Load/chaos evidence under `docs/evidence/` after the VM runs.
 
 ## 11. Security and compliance
